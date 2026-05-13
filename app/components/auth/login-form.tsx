@@ -220,9 +220,9 @@ export function LoginForm({ turnstile }: LoginFormProps) {
           className="w-full"
           onValueChange={handleTabChange}
         >
-          <TabsList className="grid w-full grid-cols-2 mb-6">
+          <TabsList className="grid w-full grid-cols-1 mb-12">
             <TabsTrigger value="login">{t("tabs.login")}</TabsTrigger>
-            <TabsTrigger value="register">{t("tabs.register")}</TabsTrigger>
+            {/*<TabsTrigger value="register">{t("tabs.register")}</TabsTrigger>*/}
           </TabsList>
           <div className="min-h-[220px]">
             <TabsContent value="login" className="space-y-4 mt-0">
@@ -291,17 +291,6 @@ export function LoginForm({ turnstile }: LoginFormProps) {
                   {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                   {t("actions.login")}
                 </Button>
-
-                <div className="relative">
-                  <div className="absolute inset-0 flex items-center">
-                    <span className="w-full border-t" />
-                  </div>
-                  <div className="relative flex justify-center text-xs uppercase">
-                    <span className="bg-background px-2 text-muted-foreground">
-                      {t("actions.or")}
-                    </span>
-                  </div>
-                </div>
               </div>
             </TabsContent>
             {/* 停用注册*/}
