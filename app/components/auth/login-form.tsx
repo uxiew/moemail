@@ -36,7 +36,7 @@ interface FormErrors {
 export function LoginForm({ turnstile }: LoginFormProps) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
+  // const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<FormErrors>({});
   const [turnstileToken, setTurnstileToken] = useState("");
@@ -68,7 +68,7 @@ export function LoginForm({ turnstile }: LoginFormProps) {
   const clearForm = () => {
     setUsername("");
     setPassword("");
-    setConfirmPassword("");
+    // setConfirmPassword("");
     setErrors({});
   };
 
@@ -89,7 +89,7 @@ export function LoginForm({ turnstile }: LoginFormProps) {
     return Object.keys(newErrors).length === 0;
   };
 
-  const validateRegisterForm = () => {
+  /*const validateRegisterForm = () => {
     const newErrors: FormErrors = {};
     if (!username) newErrors.username = t("errors.usernameRequired");
     if (!password) newErrors.password = t("errors.passwordRequired");
@@ -103,7 +103,7 @@ export function LoginForm({ turnstile }: LoginFormProps) {
       newErrors.confirmPassword = t("errors.passwordMismatch");
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
-  };
+  };*/
 
   const handleLogin = async () => {
     if (!validateLoginForm()) return;
@@ -144,6 +144,7 @@ export function LoginForm({ turnstile }: LoginFormProps) {
     }
   };
 
+  /*
   const handleRegister = async () => {
     if (!validateRegisterForm()) return;
     if (!ensureTurnstileSolved()) return;
@@ -201,11 +202,7 @@ export function LoginForm({ turnstile }: LoginFormProps) {
       setLoading(false);
       resetTurnstile();
     }
-  };
-
-  const handleGithubLogin = () => {
-    signIn("github", { callbackUrl: "/" });
-  };
+  };*/
 
   return (
     <Card className="w-[95%] max-w-lg border-2 border-primary/20">
@@ -305,15 +302,6 @@ export function LoginForm({ turnstile }: LoginFormProps) {
                     </span>
                   </div>
                 </div>
-
-                {/*<Button
-                  variant="outline"
-                  className="w-full"
-                  onClick={handleGithubLogin}
-                >
-                  <Github className="mr-2 h-4 w-4" />
-                  {t("actions.githubLogin")}
-                </Button>*/}
               </div>
             </TabsContent>
             {/* 停用注册*/}
