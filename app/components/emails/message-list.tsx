@@ -6,7 +6,7 @@ import {Mail, Calendar, RefreshCw, Trash2, Share2} from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { useThrottle } from "@/hooks/use-throttle"
-import { EMAIL_CONFIG } from "@/config"
+import { useMessagePolling } from "@/hooks/use-message-polling"
 import { useToast } from "@/components/ui/use-toast"
 import { ShareMessageDialog } from "./share-message-dialog"
 import {
@@ -57,7 +57,6 @@ export function MessageList({ email, messageType, onMessageSelect, selectedMessa
   const [refreshing, setRefreshing] = useState(false)
   const [nextCursor, setNextCursor] = useState<string | null>(null)
   const [loadingMore, setLoadingMore] = useState(false)
-  const pollTimeoutRef = useRef<Timer>(null)
   const messagesRef = useRef<Message[]>([]) // 添加 ref 来追踪最新的消息列表
   const [total, setTotal] = useState(0)
   const [messageToDelete, setMessageToDelete] = useState<Message | null>(null)
@@ -68,17 +67,11 @@ export function MessageList({ email, messageType, onMessageSelect, selectedMessa
     messagesRef.current = messages
   }, [messages])
 
-  const fetchMessages = async (cursor?: string) => {
+  const handleResponse = async (response: Response, cursor: string | undefined, signal: AbortSignal) => {
     try {
-      const url = new URL(`/api/emails/${email.id}`, window.location.origin)
-      if (messageType === 'sent') {
-        url.searchParams.set('type', 'sent')
-      }
-      if (cursor) {
-        url.searchParams.set('cursor', cursor)
-      }
-      const response = await fetch(url)
+      if (!response.ok) return
       const data = await response.json() as MessageResponse
+      if (signal.aborted) return
       
       if (!cursor) {
         const newMessages = data.messages
@@ -104,28 +97,18 @@ export function MessageList({ email, messageType, onMessageSelect, selectedMessa
       setTotal(data.total)
     } catch (error) {
       console.error("Failed to fetch messages:", error)
-    } finally {
+    }
+  }
+
+  const { fetchMessages } = useMessagePolling(
+    `/api/emails/${email.id}${messageType === 'sent' ? '?type=sent' : ''}`,
+    handleResponse,
+    () => {
       setLoading(false)
       setRefreshing(false)
       setLoadingMore(false)
-    }
-  }
-
-  const startPolling = () => {
-    stopPolling()
-    pollTimeoutRef.current = setInterval(() => {
-      if (!refreshing && !loadingMore) {
-        fetchMessages()
-      }
-    }, EMAIL_CONFIG.POLL_INTERVAL)
-  }
-
-  const stopPolling = () => {
-    if (pollTimeoutRef.current) {
-      clearInterval(pollTimeoutRef.current)
-      pollTimeoutRef.current = null
-    }
-  }
+    },
+  )
 
   const handleRefresh = async () => {
     setRefreshing(true)
@@ -184,39 +167,19 @@ export function MessageList({ email, messageType, onMessageSelect, selectedMessa
   }
 
   useEffect(() => {
-    if (!email.id) {
-      return
-    }
     setLoading(true)
+    setMessages([])
+    messagesRef.current = []
     setNextCursor(null)
-    fetchMessages()
-    startPolling() 
-
-    // 页面不可见时暂停轮询，节省 Cloudflare 免费额度
-    const handleVisibilityChange = () => {
-      if (document.hidden) {
-        stopPolling()
-      } else {
-        fetchMessages() // 恢复时立即刷新一次
-        startPolling()
-      }
-    }
-    document.addEventListener('visibilitychange', handleVisibilityChange)
-
-    return () => {
-      stopPolling()
-      document.removeEventListener('visibilitychange', handleVisibilityChange)
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [email.id])
+    setTotal(0)
+  }, [email.id, messageType])
 
   useEffect(() => {
     if (refreshTrigger && refreshTrigger > 0) {
       setRefreshing(true)
       fetchMessages()
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [refreshTrigger])
+  }, [refreshTrigger, fetchMessages])
 
   return (
   <>

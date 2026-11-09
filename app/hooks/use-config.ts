@@ -20,11 +20,12 @@ interface ConfigStore {
   fetch: () => Promise<void>
 }
 
-const useConfigStore = create<ConfigStore>((set) => ({
+const useConfigStore = create<ConfigStore>((set, get) => ({
   config: null,
   loading: false,
   error: null,
   fetch: async () => {
+    if (get().loading) return
     try {
       set({ loading: true, error: null })
       const res = await fetch("/api/config")
@@ -51,12 +52,12 @@ const useConfigStore = create<ConfigStore>((set) => ({
 
 export function useConfig() {
   const store = useConfigStore()
+  const { config, fetch: fetchConfig } = store
 
   useEffect(() => {
-    if (!store.config && !store.loading) {
-      store.fetch()
-    }
-  }, [store.config, store.loading])
+    // loading 从 true 变回 false 不是重试信号，否则 401/503 会触发无限请求。
+    if (!config) void fetchConfig()
+  }, [config, fetchConfig])
 
   return store
 } 

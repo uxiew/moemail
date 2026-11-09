@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useTranslations } from "next-intl"
 import { EmailList } from "./email-list"
 import { MessageListContainer } from "./message-list-container"
@@ -24,6 +24,16 @@ export function ThreeColumnLayout() {
   const [refreshTrigger, setRefreshTrigger] = useState(0)
   const { copyToClipboard } = useCopy()
   const { canSend: canSendEmails } = useSendPermission()
+  const [isDesktop, setIsDesktop] = useState<boolean | null>(null)
+
+  useEffect(() => {
+    // CSS 隐藏不会卸载组件，必须只挂载当前布局，避免两套列表同时请求。
+    const media = window.matchMedia('(min-width: 1024px)')
+    const update = () => setIsDesktop(media.matches)
+    update()
+    media.addEventListener('change', update)
+    return () => media.removeEventListener('change', update)
+  }, [])
 
   const columnClass = "border-2 border-primary/20 bg-background rounded-lg overflow-hidden flex flex-col"
   const headerClass = "p-2 border-b-2 border-primary/20 flex items-center justify-between shrink-0"
@@ -54,7 +64,7 @@ export function ThreeColumnLayout() {
   return (
     <div className="pb-5 pt-20 h-full flex flex-col">
       {/* 桌面端三栏布局 */}
-      <div className="hidden lg:grid grid-cols-12 gap-4 h-full min-h-0">
+      {isDesktop === true && <div className="hidden lg:grid grid-cols-12 gap-4 h-full min-h-0">
         <div className={cn("col-span-3", columnClass)}>
           <div className={headerClass}>
             <h2 className={titleClass}>{t("myEmails")}</h2>
@@ -123,10 +133,10 @@ export function ThreeColumnLayout() {
             </div>
           )}
         </div>
-      </div>
+      </div>}
 
       {/* 移动端单栏布局 */}
-      <div className="lg:hidden h-full min-h-0">
+      {isDesktop === false && <div className="lg:hidden h-full min-h-0">
         <div className={cn("h-full", columnClass)}>
           {mobileView === "list" && (
             <>
@@ -204,7 +214,7 @@ export function ThreeColumnLayout() {
             </div>
           )}
         </div>
-      </div>
+      </div>}
     </div>
   )
 } 

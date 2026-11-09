@@ -6,7 +6,7 @@ import { BrandHeader } from "@/components/ui/brand-header"
 import { FloatingLanguageSwitcher } from "@/components/layout/floating-language-switcher"
 import { SharedMessageList } from "@/components/emails/shared-message-list"
 import { SharedMessageDetail } from "@/components/emails/shared-message-detail"
-import { EMAIL_CONFIG } from "@/config"
+import { useMessagePolling } from "@/hooks/use-message-polling"
 
 interface Email {
   id: string
@@ -54,7 +54,6 @@ export function SharedEmailPageClient({
   const [loadingMore, setLoadingMore] = useState(false)
   const [total, setTotal] = useState(initialTotal)
   const [refreshing, setRefreshing] = useState(false)
-  const pollTimeoutRef = useRef<Timer | null>(null)
   const messagesRef = useRef<Message[]>(initialMessages)
 
   // 当 messages 改变时更新 ref
@@ -62,24 +61,15 @@ export function SharedEmailPageClient({
     messagesRef.current = messages
   }, [messages])
 
-  const fetchMessages = async (cursor?: string) => {
+  const handleResponse = async (messagesResponse: Response, cursor: string | undefined, signal: AbortSignal) => {
     try {
-      if (cursor) {
-        setLoadingMore(true)
-      }
-
-      const url = new URL(`/api/shared/${token}/messages`, window.location.origin)
-      if (cursor) {
-        url.searchParams.set('cursor', cursor)
-      }
-
-      const messagesResponse = await fetch(url)
       if (messagesResponse.ok) {
         const messagesData = await messagesResponse.json() as {
           messages: Message[]
           nextCursor: string | null
           total: number
         }
+        if (signal.aborted) return
 
         if (!cursor) {
           // 刷新时：合并新消息和旧消息，避免重复
@@ -111,56 +101,27 @@ export function SharedEmailPageClient({
       }
     } catch (err) {
       console.error("Failed to fetch messages:", err)
-    } finally {
+    }
+  }
+
+  const { fetchMessages } = useMessagePolling(
+    `/api/shared/${token}/messages`,
+    handleResponse,
+    () => {
       setLoadingMore(false)
       setRefreshing(false)
-    }
-  }
-
-  const startPolling = () => {
-    stopPolling()
-    pollTimeoutRef.current = setInterval(() => {
-      if (!refreshing && !loadingMore) {
-        fetchMessages()
-      }
-    }, EMAIL_CONFIG.POLL_INTERVAL)
-  }
-
-  const stopPolling = () => {
-    if (pollTimeoutRef.current) {
-      clearInterval(pollTimeoutRef.current)
-      pollTimeoutRef.current = null
-    }
-  }
+    },
+    false,
+  )
 
   const handleRefresh = async () => {
     setRefreshing(true)
     await fetchMessages()
   }
 
-  // 启动轮询，页面不可见时暂停，节省 Cloudflare 免费额度
-  useEffect(() => {
-    startPolling()
-
-    const handleVisibilityChange = () => {
-      if (document.hidden) {
-        stopPolling()
-      } else {
-        fetchMessages()
-        startPolling()
-      }
-    }
-    document.addEventListener('visibilitychange', handleVisibilityChange)
-
-    return () => {
-      stopPolling()
-      document.removeEventListener('visibilitychange', handleVisibilityChange)
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token])
-
   const handleLoadMore = () => {
     if (nextCursor && !loadingMore) {
+      setLoadingMore(true)
       fetchMessages(nextCursor)
     }
   }

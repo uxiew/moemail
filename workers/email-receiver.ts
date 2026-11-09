@@ -1,7 +1,7 @@
 import { Env } from '../types'
 import { drizzle } from 'drizzle-orm/d1'
 import { messages, emails, webhooks } from '../app/lib/schema'
-import { eq, sql } from 'drizzle-orm'
+import { and, eq, gt, sql } from 'drizzle-orm'
 import PostalMime from 'postal-mime'
 import { WEBHOOK_CONFIG } from '../app/config/webhook'
 import { EmailMessage } from '../app/lib/webhook'
@@ -9,19 +9,21 @@ import { EmailMessage } from '../app/lib/webhook'
 const handleEmail = async (message: ForwardableEmailMessage, env: Env) => {
   const db = drizzle(env.DB, { schema: { messages, emails, webhooks } })
 
-  const parsedMessage = await PostalMime.parse(message.raw)
-
-  console.log("parsedMessage:", parsedMessage)
-
   try {
     const targetEmail = await db.query.emails.findFirst({
-      where: eq(sql`LOWER(${emails.address})`, message.to.toLowerCase())
+      where: and(
+        eq(sql`LOWER(${emails.address})`, message.to.toLowerCase()),
+        gt(emails.expiresAt, new Date())
+      )
     })
 
     if (!targetEmail) {
-      console.error(`Email not found: ${message.to}`)
+      message.setReject('Recipient does not exist or has expired')
       return
     }
+
+    // 无效收件人不解析 MIME，也不保存正文或触发 webhook。
+    const parsedMessage = await PostalMime.parse(message.raw)
 
     const savedMessage = await db.insert(messages).values({
       emailId: targetEmail.id,
@@ -32,9 +34,11 @@ const handleEmail = async (message: ForwardableEmailMessage, env: Env) => {
       type: 'received',
     }).returning().get()
 
-    const webhook = await db.query.webhooks.findFirst({
-      where: eq(webhooks.userId, targetEmail!.userId!)
-    })
+    const webhook = targetEmail.userId
+      ? await db.query.webhooks.findFirst({
+          where: eq(webhooks.userId, targetEmail.userId)
+        })
+      : undefined
 
     if (webhook?.enabled) {
       try {
@@ -60,7 +64,7 @@ const handleEmail = async (message: ForwardableEmailMessage, env: Env) => {
       }
     }
 
-    console.log(`Email processed: ${parsedMessage.subject}`)
+    console.log('Email processed')
   } catch (error) {
     console.error('Failed to process email:', error)
   }

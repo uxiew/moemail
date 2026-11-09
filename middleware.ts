@@ -110,17 +110,8 @@ function matchLocale(lang: string): Locale | null {
 
   const base = lang.split('-')[0]
 
-  // Handle Chinese variants with explicit regions or scripts
-  if (base === 'zh') {
-    if (lang.includes('tw') || lang.includes('hk') || lang.includes('mo') || lang.includes('hant')) {
-      return 'zh-TW'
-    }
-    if (lang.includes('cn') || lang.includes('sg') || lang.includes('hans')) {
-      return 'zh-CN'
-    }
-    // default Chinese fallback
-    return 'zh-CN'
-  }
+  // 所有中文变体都回退到实际存在的简体翻译。
+  if (base === 'zh') return 'zh-CN'
 
   const baseMatch = i18n.locales.find((locale) => locale.toLowerCase().split('-')[0] === base)
   if (baseMatch) return baseMatch
