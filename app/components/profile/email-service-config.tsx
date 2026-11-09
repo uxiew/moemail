@@ -149,7 +149,7 @@ export function EmailServiceConfig() {
               <div className="space-y-4">
                 <div className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg text-sm">
                   <p className="font-semibold text-blue-900 mb-3 flex items-center gap-2">
-                    <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                    <span className="w-2 h-2 bg-blue-500 rounded-full" />
                     {t("fixedRoleLimits")}
                   </p>
                   <div className="space-y-2 text-blue-800">
