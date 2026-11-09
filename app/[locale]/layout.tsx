@@ -3,7 +3,6 @@ import { notFound } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import { i18n, type Locale } from "@/i18n/config";
 import type { Metadata, Viewport } from "next";
-import { LoginForm } from "@/components/auth/login-form";
 import { ThemeProvider } from "@/components/theme/theme-provider";
 import { Toaster } from "@/components/ui/toaster";
 import { cn } from "@/lib/utils";
@@ -147,7 +146,6 @@ export default async function LocaleLayout({
           <Providers>
             <NextIntlClientProvider locale={locale} messages={messages}>
               {children}
-              <LoginForm />
             </NextIntlClientProvider>
           </Providers>
           <Toaster />

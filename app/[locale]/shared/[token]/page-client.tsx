@@ -7,6 +7,7 @@ import { FloatingLanguageSwitcher } from "@/components/layout/floating-language-
 import { SharedMessageList } from "@/components/emails/shared-message-list"
 import { SharedMessageDetail } from "@/components/emails/shared-message-detail"
 import { useMessagePolling } from "@/hooks/use-message-polling"
+import { useDesktopLayout } from "@/hooks/use-desktop-layout"
 
 interface Email {
   id: string
@@ -44,6 +45,7 @@ export function SharedEmailPageClient({
   initialTotal,
   token
 }: SharedEmailPageClientProps) {
+  const isDesktop = useDesktopLayout()
   const t = useTranslations("emails")
   const tShared = useTranslations("emails.shared")
 
@@ -165,7 +167,7 @@ export function SharedEmailPageClient({
         />
 
         {/* 桌面端双栏布局 */}
-        <div className="hidden lg:grid grid-cols-2 gap-4 h-[calc(100vh-280px)] mt-6">
+        {isDesktop === true && <div className="hidden lg:grid grid-cols-2 gap-4 h-[calc(100dvh-280px)] mt-6">
           <div className="border-2 border-primary/20 bg-background rounded-lg overflow-hidden">
             <SharedMessageList
               messages={messages.map(msg => ({
@@ -245,10 +247,10 @@ export function SharedEmailPageClient({
               }}
             />
           </div>
-        </div>
+        </div>}
 
         {/* 移动端单栏布局 */}
-        <div className="lg:hidden h-[calc(100vh-260px)] mt-6">
+        {isDesktop === false && <div className="lg:hidden h-[calc(100dvh-260px)] mt-6">
           <div className="border-2 border-primary/20 bg-background rounded-lg overflow-hidden h-full flex flex-col">
             {!selectedMessage ? (
               // 消息列表视图
@@ -343,7 +345,7 @@ export function SharedEmailPageClient({
               </>
             )}
           </div>
-        </div>
+        </div>}
       </div>
 
       <FloatingLanguageSwitcher />

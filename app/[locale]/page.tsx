@@ -26,7 +26,7 @@ export default async function Home(
       <div className="container mx-auto px-4 lg:px-8 max-w-[1600px]">
         <Header />
         <main className="pt-16">
-          <div className="h-[calc(100vh-4rem)] flex flex-col items-center justify-center text-center px-2 relative overflow-hidden">
+          <div className="min-h-[calc(100dvh-4rem)] flex flex-col items-center justify-center text-center px-2 relative overflow-hidden">
             <div className="absolute inset-0 -z-10 bg-grid-primary/5" />
 
             <div className="w-full max-w-3xl mx-auto space-y-6 sm:space-y-8 py-4">

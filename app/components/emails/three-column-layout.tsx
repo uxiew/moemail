@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { useTranslations } from "next-intl"
 import { EmailList } from "./email-list"
 import { MessageListContainer } from "./message-list-container"
@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils"
 import { useCopy } from "@/hooks/use-copy"
 import { useSendPermission } from "@/hooks/use-send-permission"
 import { Copy } from "lucide-react"
+import { useDesktopLayout } from "@/hooks/use-desktop-layout"
 
 interface Email {
   id: string
@@ -24,19 +25,10 @@ export function ThreeColumnLayout() {
   const [refreshTrigger, setRefreshTrigger] = useState(0)
   const { copyToClipboard } = useCopy()
   const { canSend: canSendEmails } = useSendPermission()
-  const [isDesktop, setIsDesktop] = useState<boolean | null>(null)
+  const isDesktop = useDesktopLayout()
 
-  useEffect(() => {
-    // CSS 隐藏不会卸载组件，必须只挂载当前布局，避免两套列表同时请求。
-    const media = window.matchMedia('(min-width: 1024px)')
-    const update = () => setIsDesktop(media.matches)
-    update()
-    media.addEventListener('change', update)
-    return () => media.removeEventListener('change', update)
-  }, [])
-
-  const columnClass = "border-2 border-primary/20 bg-background rounded-lg overflow-hidden flex flex-col"
-  const headerClass = "p-2 border-b-2 border-primary/20 flex items-center justify-between shrink-0"
+  const columnClass = "min-w-0 border-2 border-primary/20 bg-background rounded-lg overflow-hidden flex flex-col"
+  const headerClass = "h-14 min-w-0 p-2 border-b-2 border-primary/20 flex items-center justify-between shrink-0"
   const titleClass = "text-sm font-bold px-2 w-full overflow-hidden"
 
   // 移动端视图逻辑
@@ -62,7 +54,7 @@ export function ThreeColumnLayout() {
   }
 
   return (
-    <div className="pb-5 pt-20 h-full flex flex-col">
+    <div className="pb-5 pt-20 h-full min-h-0 flex flex-col">
       {/* 桌面端三栏布局 */}
       {isDesktop === true && <div className="hidden lg:grid grid-cols-12 gap-4 h-full min-h-0">
         <div className={cn("col-span-3", columnClass)}>
@@ -85,11 +77,11 @@ export function ThreeColumnLayout() {
             <h2 className={titleClass}>
               {selectedEmail ? (
                 <div className="w-full flex justify-between items-center gap-2">
-                  <div className="flex items-center gap-2">
+                  <div className="flex min-w-0 items-center gap-2">
                     <span className="truncate min-w-0">{selectedEmail.address}</span>
-                    <div className="shrink-0 cursor-pointer text-primary" onClick={copyEmailAddress}>
+                    <button type="button" className="shrink-0 text-primary" aria-label={t("copyEmailAddress")} onClick={copyEmailAddress}>
                       <Copy className="size-4" />
-                    </div>
+                    </button>
                   </div>
                   {selectedEmail && canSendEmails && (
                     <SendDialog 
@@ -166,11 +158,11 @@ export function ThreeColumnLayout() {
                   {t("backToEmailList")}
                 </button>
                 <div className="flex-1 flex justify-between items-center gap-2 min-w-0">
-                  <div className="flex items-center gap-2">
+                  <div className="flex min-w-0 items-center gap-2">
                     <span className="truncate min-w-0 flex-1 text-right">{selectedEmail.address}</span>
-                    <div className="shrink-0 cursor-pointer text-primary" onClick={copyEmailAddress}>
+                    <button type="button" className="shrink-0 text-primary" aria-label={t("copyEmailAddress")} onClick={copyEmailAddress}>
                       <Copy className="size-4" />
-                    </div>
+                    </button>
                   </div>
                   {canSendEmails && (
                     <SendDialog 
