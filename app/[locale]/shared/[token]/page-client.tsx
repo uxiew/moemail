@@ -138,11 +138,23 @@ export function SharedEmailPageClient({
     await fetchMessages()
   }
 
-  // 启动轮询
+  // 启动轮询，页面不可见时暂停，节省 Cloudflare 免费额度
   useEffect(() => {
     startPolling()
+
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        stopPolling()
+      } else {
+        fetchMessages()
+        startPolling()
+      }
+    }
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+
     return () => {
       stopPolling()
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token])

@@ -1,0 +1,5 @@
+# MoeMail 私有部署：禁止爬虫抓取。
+# 除静态资源外，每次访问都会消耗 Cloudflare 每日 10 万次的 Functions 请求额度。
+# 注意：这只对守规矩的爬虫有效，恶意扫描需要靠 Cloudflare WAF 规则拦截。
+User-agent: *
+Disallow: /

@@ -192,8 +192,20 @@ export function MessageList({ email, messageType, onMessageSelect, selectedMessa
     fetchMessages()
     startPolling() 
 
+    // 页面不可见时暂停轮询，节省 Cloudflare 免费额度
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        stopPolling()
+      } else {
+        fetchMessages() // 恢复时立即刷新一次
+        startPolling()
+      }
+    }
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+
     return () => {
-      stopPolling() 
+      stopPolling()
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [email.id])
