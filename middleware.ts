@@ -4,6 +4,7 @@ import { i18n, type Locale } from "@/i18n/config"
 import { PERMISSIONS, hasPermission, type Permission, type Role } from "@/lib/permissions"
 import { checkPermission } from "@/lib/auth"
 import { getUserIdByApiKey, USER_ID_HEADER } from "@/lib/apiKey"
+import { checkRateLimit } from "@/lib/rate-limit"
 
 const API_PERMISSIONS: Record<string, Permission> = {
   '/api/emails': PERMISSIONS.MANAGE_EMAIL,
@@ -20,7 +21,18 @@ const PUBLIC_API_PREFIXES = ['/api/auth', '/api/shared']
 /** API Key 只允许访问的接口前缀 */
 const API_KEY_PREFIXES = ['/api/emails', '/api/config']
 
-const json = (error: string, status: number) => NextResponse.json({ error }, { status })
+const json = (error: string, status: number, extraHeaders?: Record<string, string>) => {
+  return NextResponse.json({ error }, { status, headers: extraHeaders })
+}
+
+/** 从请求中提取客户端 IP（Cloudflare 会设置 CF-Connecting-IP） */
+function getClientIp(request: Request): string {
+  return (
+    request.headers.get('cf-connecting-ip') ??
+    request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ??
+    'unknown'
+  )
+}
 
 export async function middleware(request: Request) {
   const url = new URL(request.url)
@@ -35,6 +47,16 @@ export async function middleware(request: Request) {
 
   if (pathname.startsWith('/api')) {
     if (PUBLIC_API_PREFIXES.some(prefix => pathname.startsWith(prefix))) {
+      // 公开接口（分享页轮询等）按 IP 限流：30 次/分钟
+      if (pathname.startsWith('/api/shared')) {
+        const ip = getClientIp(request)
+        const limited = checkRateLimit(`share:${ip}`, 30, 60_000)
+        if (limited) {
+          return json("请求过于频繁，请稍后再试", 429, {
+            'Retry-After': String(Math.ceil(limited.retryAfterMs / 1000))
+          })
+        }
+      }
       return next()
     }
 
@@ -59,6 +81,19 @@ export async function middleware(request: Request) {
     }
 
     headers.set(USER_ID_HEADER, userId)
+
+    // 按用户限流，防止暴力刷接口耗尽 Cloudflare 免费额度
+    // 创建邮箱：10 次/分钟；其他 API：60 次/分钟
+    const rateKey = pathname.startsWith('/api/emails/generate')
+      ? `gen:${userId}`
+      : `api:${userId}`
+    const rateLimit = pathname.startsWith('/api/emails/generate') ? 10 : 60
+    const limited = checkRateLimit(rateKey, rateLimit, 60_000)
+    if (limited) {
+      return json("请求过于频繁，请稍后再试", 429, {
+        'Retry-After': String(Math.ceil(limited.retryAfterMs / 1000))
+      })
+    }
 
     if (pathname === '/api/config' && request.method === 'GET') {
       return next()
