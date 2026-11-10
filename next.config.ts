@@ -4,7 +4,12 @@ import { setupDevPlatform } from '@cloudflare/next-on-pages/next-dev';
 
 async function setup() {
   if (process.env.NODE_ENV === 'development') {
-    await setupDevPlatform()
+    const localState = process.env.MOEMAIL_LOCAL_STATE_DIR
+    await setupDevPlatform(localState ? {
+      persist: { path: localState },
+      envFiles: [],
+      remoteBindings: false,
+    } : undefined)
   }
 }
 

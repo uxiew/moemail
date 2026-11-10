@@ -114,12 +114,19 @@
       "siteKeyPlaceholder": "Enter Turnstile Site Key",
       "secretKey": "Secret Key",
       "secretKeyPlaceholder": "Enter Turnstile Secret Key",
-      "secretKeyDescription": "Set up a Turnstile application in Cloudflare and provide the required keys before enabling"
+      "secretKeyDescription": "Set up a Turnstile application in Cloudflare and provide the required keys before enabling",
+      "showSecret": "Show Secret Key",
+      "hideSecret": "Hide Secret Key"
     },
     "save": "Save Configuration",
     "saving": "Saving...",
     "saveSuccess": "Configuration saved successfully",
-    "saveFailed": "Failed to save configuration"
+    "saveFailed": "Failed to save configuration",
+    "registration": {
+      "enable": "Allow new registrations",
+      "description": "When disabled, new accounts cannot be created. Existing users can still sign in. Save to apply."
+    },
+    "loadFailed": "Failed to load settings. Refresh the page to retry."
   },
   "promote": {
     "title": "Role Management",

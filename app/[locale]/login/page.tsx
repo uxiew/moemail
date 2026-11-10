@@ -3,6 +3,8 @@ import { auth } from "@/lib/auth"
 import { redirect } from "next/navigation"
 import type { Locale } from "@/i18n/config"
 import { getTurnstileConfig } from "@/lib/turnstile"
+import { isRegistrationEnabled } from "@/lib/registration"
+import { getRequestContext } from "@cloudflare/next-on-pages"
 
 export const runtime = "edge"
 
@@ -19,11 +21,14 @@ export default async function LoginPage({
     redirect(`/${locale}`)
   }
 
-  const turnstile = await getTurnstileConfig()
+  const [turnstile, registrationEnabled] = await Promise.all([
+    getTurnstileConfig(),
+    isRegistrationEnabled(getRequestContext().env.SITE_CONFIG),
+  ])
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
-      <LoginForm turnstile={{ enabled: turnstile.enabled, siteKey: turnstile.siteKey }} />
+    <div className="min-h-dvh flex items-center justify-center px-4 py-8 bg-gradient-to-b from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
+      <LoginForm registrationEnabled={registrationEnabled} turnstile={{ enabled: turnstile.enabled, siteKey: turnstile.siteKey }} />
     </div>
   )
 }

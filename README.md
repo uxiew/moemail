@@ -85,10 +85,12 @@ git clone https://github.com/beilunyang/moemail.git
 cd moemail
 ```
 
-2. 安装依赖：
+2. 安装构建工具和依赖（版本固定在 `.mise.toml`）：
 ```bash
-pnpm install
+mise install
+pnpm install --frozen-lockfile
 ```
+不用 mise 时，请使用 Node.js 24.22.2 和 pnpm 12.8.1。隔离的假数据预览见[本地预览说明](docs/local-preview.md)。
 
 3. 设置 wrangler：
 ```bash
@@ -282,10 +284,11 @@ pnpm dlx tsx ./scripts/deploy/index.ts
 
 系统设置存储在 Cloudflare KV 中，包括以下内容：
 
-- `DEFAULT_ROLE`: 新注册用户默认角色，可选值为 `CIVILIAN`、`KNIGHT`、`DUKE`
+- `DEFAULT_ROLE`: 新注册用户默认角色，可选值为 `civilian`、`knight`、`duke`
 - `EMAIL_DOMAINS`: 支持的邮箱域名，多个域名用逗号分隔
 - `ADMIN_CONTACT`: 管理员联系方式
 - `MAX_EMAILS`: 每个用户可创建的最大邮箱数量
+- `REGISTRATION_ENABLED`: 注册开关；默认关闭，操作方式见[本地预览与注册配置](docs/local-preview.md#注册开关)
 
 **皇帝**角色可以在个人中心页面设置
 
@@ -426,17 +429,19 @@ GET /api/config
 返回响应：
 ```json
 {
-  "defaultRole": "CIVILIAN",
+  "defaultRole": "civilian",
   "emailDomains": "moemail.app,example.com",
   "adminContact": "admin@example.com",
-  "maxEmails": "10"
+  "maxEmails": "10",
+  "registrationEnabled": false
 }
 ```
 响应字段说明：
-- `defaultRole`: 新用户默认角色，可选值：`CIVILIAN`（平民）、`KNIGHT`（骑士）、`DUKE`（公爵）
+- `defaultRole`: 新用户默认角色，可选值：`civilian`（平民）、`knight`（骑士）、`duke`（公爵）
 - `emailDomains`: 支持的邮箱域名，多个域名用逗号分隔
 - `adminContact`: 管理员联系方式
 - `maxEmails`: 每个用户可创建的最大邮箱数量
+- `registrationEnabled`: 是否允许新用户注册
 
 #### 创建临时邮箱
 ```http

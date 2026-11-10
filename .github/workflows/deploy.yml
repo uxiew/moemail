@@ -9,6 +9,11 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    env:
+      NEXT_TELEMETRY_DISABLED: '1'
+      VERCEL_TELEMETRY_DISABLED: '1'
+      WRANGLER_SEND_METRICS: 'false'
+      DO_NOT_TRACK: '1'
     steps:
       - uses: actions/checkout@v4
         with:
@@ -24,12 +29,12 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/action-setup@v2
         with:
-          version: 9
+          version: 12.8.1
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '24.22.2'
           cache: 'pnpm'
 
       - name: Install Dependencies
@@ -50,7 +55,7 @@ jobs:
           AUTH_GOOGLE_ID: ${{ secrets.AUTH_GOOGLE_ID }}
           AUTH_GOOGLE_SECRET: ${{ secrets.AUTH_GOOGLE_SECRET }}
           AUTH_SECRET: ${{ secrets.AUTH_SECRET }}
-        run: pnpm dlx tsx scripts/deploy/index.ts
+        run: pnpm exec tsx scripts/deploy/index.ts
 
       # Clean up
       - name: Post deployment cleanup

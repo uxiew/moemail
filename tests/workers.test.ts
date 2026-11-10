@@ -6,6 +6,7 @@ import { join } from 'node:path'
 import { getPlatformProxy } from 'wrangler'
 import cleanup from '../workers/cleanup'
 import receiver from '../workers/email-receiver'
+import type { Db } from '../app/lib/db'
 
 let directory: string
 let platform: Awaited<ReturnType<typeof getPlatformProxy<Env>>>
@@ -58,11 +59,11 @@ function incoming(to: string) {
   return { message: message as ForwardableEmailMessage, rejected, reads: () => reads }
 }
 
-test('cleanup deletes at most 100 expired mailboxes, cascades, and can run again', async () => {
+test('cleanup deletes at most 1000 expired mailboxes, cascades, and can run again', async () => {
   const now = Date.now()
   await mailbox('active', now + 60_000)
   await mailbox('permanent', new Date('9999-01-01').getTime())
-  await db.batch(Array.from({ length: 101 }, (_, i) => db.prepare(
+  await db.batch(Array.from({ length: 1001 }, (_, i) => db.prepare(
     'INSERT INTO email (id, address, created_at, expires_at) VALUES (?, ?, ?, ?)'
   ).bind(`expired-${i}`, `expired-${i}@example.com`, now, now - 1000)))
   await db.prepare("INSERT INTO message (id, emailId, subject, content, received_at, sent_at) VALUES ('message', 'expired-0', '', '', ?, ?)").bind(now, now).run()
@@ -100,4 +101,22 @@ test('active recipient matching is case-insensitive and does not log mail conten
   assert.deepEqual(saved, { emailId: 'active', subject: 'private subject', content: 'private body\n' })
   const logged = JSON.stringify(log.mock.calls.map(call => call.arguments))
   assert.doesNotMatch(logged, /private subject|private body|sender@example.com/)
+})
+
+test('registration handles concurrent duplicate usernames without exposing password hashes', async () => {
+  const { registerUser, UsernameTakenError } = await import('../app/lib/registration')
+  const { drizzle } = await import('drizzle-orm/d1')
+  const schema = await import('../app/lib/schema')
+  const database: Db = drizzle(db, { schema })
+  const outcomes = await Promise.allSettled([
+    registerUser(database, 'registration_test', 'test-password-only'),
+    registerUser(database, 'registration_test', 'test-password-only'),
+  ])
+  const successful = outcomes.filter(result => result.status === 'fulfilled')
+  const rejected = outcomes.filter(result => result.status === 'rejected')
+  assert.equal(successful.length, 1)
+  assert.equal(rejected.length, 1)
+  assert.ok(rejected[0].reason instanceof UsernameTakenError)
+  assert.equal('password' in successful[0].value, false)
+  assert.equal(await db.prepare("SELECT count(*) AS n FROM user WHERE username = 'registration_test'").first('n'), 1)
 })

@@ -1,40 +1,32 @@
-import { NextResponse } from "next/server"
-import { register } from "@/lib/auth"
-import { authSchema, AuthSchema } from "@/lib/validation"
-import { verifyTurnstileToken } from "@/lib/turnstile"
+import { NextResponse } from 'next/server'
+import { getRequestContext } from '@cloudflare/next-on-pages'
+import { createDb } from '@/lib/db'
+import { authSchema } from '@/lib/validation'
+import { isRegistrationEnabled, registerUser, UsernameTakenError } from '@/lib/registration'
+import { verifyTurnstileToken } from '@/lib/turnstile'
 
-export const runtime = "edge"
+export const runtime = 'edge'
 
 export async function POST(request: Request) {
   try {
-    const json = await request.json() as AuthSchema
-    
-    try {
-      authSchema.parse(json)
-    } catch (error) {
-      return NextResponse.json(
-        { error: error instanceof Error ? error.message : "输入格式不正确" },
-        { status: 400 }
-      )
+    if (!await isRegistrationEnabled(getRequestContext().env.SITE_CONFIG)) {
+      return NextResponse.json({ error: '注册已关闭，请联系管理员' }, { status: 403 })
     }
-
-    const { username, password, turnstileToken } = json
-
+    const parsed = authSchema.safeParse(await request.json().catch(() => null))
+    if (!parsed.success) {
+      return NextResponse.json({ error: '输入格式不正确' }, { status: 400 })
+    }
+    const { username, password, turnstileToken } = parsed.data
     const verification = await verifyTurnstileToken(turnstileToken)
     if (!verification.success) {
-      const message = verification.reason === "missing-token"
-        ? "请先完成安全验证"
-        : "安全验证未通过"
-      return NextResponse.json({ error: message }, { status: 400 })
+      return NextResponse.json({ error: verification.reason === 'missing-token' ? '请先完成安全验证' : '安全验证未通过' }, { status: 400 })
     }
-
-    const user = await register(username, password)
-
+    const user = await registerUser(createDb(), username, password)
     return NextResponse.json({ user })
   } catch (error) {
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "注册失败" },
-      { status: 500 }
+      { error: error instanceof UsernameTakenError ? error.message : '注册失败，请稍后重试' },
+      { status: error instanceof UsernameTakenError ? 409 : 500 },
     )
   }
-} 
+}

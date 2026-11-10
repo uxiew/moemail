@@ -1,407 +1,144 @@
-"use client";
+"use client"
 
-import { useCallback, useState } from "react";
-import { signIn } from "next-auth/react";
-import { useTranslations } from "next-intl";
-import { useToast } from "@/components/ui/use-toast";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, KeyRound, User2 } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { Turnstile } from "@/components/auth/turnstile";
-
-interface TurnstileConfigProps {
-  enabled: boolean;
-  siteKey: string;
-}
+import { useCallback, useId, useState } from "react"
+import { signIn } from "next-auth/react"
+import { useTranslations } from "next-intl"
+import { useToast } from "@/components/ui/use-toast"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Loader2, KeyRound, User2 } from "lucide-react"
+import { cn } from "@/lib/utils"
+import { Turnstile } from "@/components/auth/turnstile"
 
 interface LoginFormProps {
-  turnstile?: TurnstileConfigProps;
+  registrationEnabled?: boolean
+  turnstile?: { enabled: boolean; siteKey: string }
 }
 
-interface FormErrors {
-  username?: string;
-  password?: string;
-  confirmPassword?: string;
-}
+type Field = 'username' | 'password' | 'confirmPassword'
 
-export function LoginForm({ turnstile }: LoginFormProps) {
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
-  // const [confirmPassword, setConfirmPassword] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [errors, setErrors] = useState<FormErrors>({});
-  const [turnstileToken, setTurnstileToken] = useState("");
-  const [turnstileResetCounter, setTurnstileResetCounter] = useState(0);
-  const [activeTab, setActiveTab] = useState<"login" | "register">("login");
-  const { toast } = useToast();
-  const t = useTranslations("auth.loginForm");
-
-  const turnstileSiteKey = turnstile?.siteKey ?? "";
-  const turnstileEnabled = Boolean(turnstile?.enabled && turnstileSiteKey);
+export function LoginForm({ turnstile, registrationEnabled = false }: LoginFormProps) {
+  const id = useId()
+  const [username, setUsername] = useState("")
+  const [password, setPassword] = useState("")
+  const [confirmPassword, setConfirmPassword] = useState("")
+  const [loading, setLoading] = useState(false)
+  const [errors, setErrors] = useState<Partial<Record<Field, string>>>({})
+  const [turnstileToken, setTurnstileToken] = useState("")
+  const [turnstileResetCounter, setTurnstileResetCounter] = useState(0)
+  const [activeTab, setActiveTab] = useState('login')
+  const { toast } = useToast()
+  const t = useTranslations("auth.loginForm")
+  const registering = registrationEnabled && activeTab === 'register'
+  const tab = registering ? 'register' : 'login'
+  const turnstileEnabled = Boolean(turnstile?.enabled && turnstile.siteKey)
 
   const resetTurnstile = useCallback(() => {
-    setTurnstileToken("");
-    setTurnstileResetCounter((prev) => prev + 1);
-  }, []);
+    setTurnstileToken("")
+    setTurnstileResetCounter(previous => previous + 1)
+  }, [])
 
-  const ensureTurnstileSolved = () => {
-    if (!turnstileEnabled) return true;
-    if (turnstileToken) return true;
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault()
+    if (loading) return
+    const nextErrors: Partial<Record<Field, string>> = {}
+    if (!username) nextErrors.username = t('errors.usernameRequired')
+    else if (!/^[a-zA-Z0-9_-]{1,20}$/.test(username)) nextErrors.username = t('errors.usernameInvalid')
+    if (!password) nextErrors.password = t('errors.passwordRequired')
+    else if (password.length < 8) nextErrors.password = t('errors.passwordTooShort')
+    if (registering) {
+      if (!confirmPassword) nextErrors.confirmPassword = t('errors.confirmPasswordRequired')
+      else if (password !== confirmPassword) nextErrors.confirmPassword = t('errors.passwordMismatch')
+    }
+    setErrors(nextErrors)
+    if (Object.keys(nextErrors).length) return
+    if (turnstileEnabled && !turnstileToken) {
+      toast({ title: t('toast.turnstileRequired'), description: t('toast.turnstileRequiredDesc'), variant: 'destructive' })
+      return
+    }
 
-    toast({
-      title: t("toast.turnstileRequired"),
-      description: t("toast.turnstileRequiredDesc"),
-      variant: "destructive",
-    });
-    return false;
-  };
-
-  const clearForm = () => {
-    setUsername("");
-    setPassword("");
-    // setConfirmPassword("");
-    setErrors({});
-  };
-
-  const handleTabChange = (value: string) => {
-    setActiveTab(value as "login" | "register");
-    clearForm();
-  };
-
-  const validateLoginForm = () => {
-    const newErrors: FormErrors = {};
-    if (!username) newErrors.username = t("errors.usernameRequired");
-    if (!password) newErrors.password = t("errors.passwordRequired");
-    if (username.includes("@"))
-      newErrors.username = t("errors.usernameInvalid");
-    if (password && password.length < 8)
-      newErrors.password = t("errors.passwordTooShort");
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  /*const validateRegisterForm = () => {
-    const newErrors: FormErrors = {};
-    if (!username) newErrors.username = t("errors.usernameRequired");
-    if (!password) newErrors.password = t("errors.passwordRequired");
-    if (username.includes("@"))
-      newErrors.username = t("errors.usernameInvalid");
-    if (password && password.length < 8)
-      newErrors.password = t("errors.passwordTooShort");
-    if (!confirmPassword)
-      newErrors.confirmPassword = t("errors.confirmPasswordRequired");
-    if (password !== confirmPassword)
-      newErrors.confirmPassword = t("errors.passwordMismatch");
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };*/
-
-  const handleLogin = async () => {
-    if (!validateLoginForm()) return;
-    if (!ensureTurnstileSolved()) return;
-
-    setLoading(true);
+    setLoading(true)
     try {
-      const result = await signIn("credentials", {
-        username,
-        password,
-        turnstileToken,
-        redirect: false,
-      });
-
-      if (result?.error) {
-        toast({
-          title: t("toast.loginFailed"),
-          description: result.error,
-          variant: "destructive",
-        });
-        setLoading(false);
-        resetTurnstile();
-        return;
+      if (registering) {
+        const response = await fetch('/api/auth/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password, turnstileToken }),
+        })
+        const data = await response.json() as { error?: string }
+        if (!response.ok) throw new Error(data.error || t('toast.registerFailedDesc'))
+        // Turnstile token 只能消费一次，注册成功后重新验证登录，不复用旧 token。
+        setActiveTab('login')
+        setPassword('')
+        setConfirmPassword('')
+        resetTurnstile()
+        toast({ title: t('toast.registerSuccess'), description: t('toast.registerSuccessDesc') })
+      } else {
+        const result = await signIn('credentials', { username, password, turnstileToken, redirect: false })
+        if (result?.error) throw new Error(t('toast.loginFailedDesc'))
+        window.location.href = '/'
       }
-
-      window.location.href = "/";
     } catch (error) {
       toast({
-        title: t("toast.loginFailed"),
-        description:
-          error instanceof Error
-            ? error.message
-            : t("toast.registerFailedDesc"),
-        variant: "destructive",
-      });
-      setLoading(false);
-      resetTurnstile();
+        title: t(registering ? 'toast.registerFailed' : 'toast.loginFailed'),
+        description: error instanceof Error ? error.message : t('toast.registerFailedDesc'),
+        variant: 'destructive',
+      })
+      resetTurnstile()
+    } finally {
+      setLoading(false)
     }
-  };
+  }
 
-  /*
-  const handleRegister = async () => {
-    if (!validateRegisterForm()) return;
-    if (!ensureTurnstileSolved()) return;
-
-    setLoading(true);
-    try {
-      const response = await fetch("/api/auth/register", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, password, turnstileToken }),
-      });
-
-      const data = (await response.json()) as { error?: string };
-
-      if (!response.ok) {
-        toast({
-          title: t("toast.registerFailed"),
-          description: data.error || t("toast.registerFailedDesc"),
-          variant: "destructive",
-        });
-        setLoading(false);
-        resetTurnstile();
-        return;
-      }
-
-      // 注册成功后自动登录
-      const result = await signIn("credentials", {
-        username,
-        password,
-        turnstileToken,
-        redirect: false,
-      });
-
-      if (result?.error) {
-        toast({
-          title: t("toast.loginFailed"),
-          description: result.error || t("toast.autoLoginFailed"),
-          variant: "destructive",
-        });
-        setLoading(false);
-        resetTurnstile();
-        return;
-      }
-
-      window.location.href = "/";
-    } catch (error) {
-      toast({
-        title: t("toast.registerFailed"),
-        description:
-          error instanceof Error
-            ? error.message
-            : t("toast.registerFailedDesc"),
-        variant: "destructive",
-      });
-      setLoading(false);
-      resetTurnstile();
-    }
-  };*/
+  const fields = [
+    { name: 'username' as const, value: username, set: setUsername, type: 'text', Icon: User2, autocomplete: 'username' },
+    { name: 'password' as const, value: password, set: setPassword, type: 'password', Icon: KeyRound, autocomplete: registering ? 'new-password' : 'current-password' },
+    ...(registering ? [{ name: 'confirmPassword' as const, value: confirmPassword, set: setConfirmPassword, type: 'password', Icon: KeyRound, autocomplete: 'new-password' }] : []),
+  ]
 
   return (
-    <Card className="w-[95%] max-w-lg border-2 border-primary/20">
+    <Card className="w-full max-w-lg border-2 border-primary/20">
       <CardHeader className="space-y-2">
-        <CardTitle className="text-2xl text-center bg-gradient-to-r from-primary to-purple-600 bg-clip-text text-transparent">
-          {t("title")}
-        </CardTitle>
-        <CardDescription className="text-center">
-          {t("subtitle")}
-        </CardDescription>
+        <CardTitle className="text-2xl text-center bg-gradient-to-r from-primary to-purple-600 bg-clip-text text-transparent">{t('title')}</CardTitle>
+        <CardDescription className="text-center">{t('subtitle')}</CardDescription>
       </CardHeader>
       <CardContent className="px-6">
-        <Tabs
-          value={activeTab}
-          className="w-full"
-          onValueChange={handleTabChange}
-        >
-          <TabsList className="grid w-full grid-cols-1 mb-12">
-            <TabsTrigger value="login">{t("tabs.login")}</TabsTrigger>
-            {/*<TabsTrigger value="register">{t("tabs.register")}</TabsTrigger>*/}
-          </TabsList>
-          <div className="min-h-[220px]">
-            <TabsContent value="login" className="space-y-4 mt-0">
-              <div className="space-y-3">
-                <div className="space-y-1.5">
+        <Tabs value={tab} onValueChange={value => { setActiveTab(value); setErrors({}); setPassword(''); setConfirmPassword(''); resetTurnstile() }}>
+          {registrationEnabled && (
+            <TabsList className="grid w-full grid-cols-2 mb-6">
+              <TabsTrigger value="login" disabled={loading}>{t('tabs.login')}</TabsTrigger>
+              <TabsTrigger value="register" disabled={loading}>{t('tabs.register')}</TabsTrigger>
+            </TabsList>
+          )}
+          <TabsContent value={tab} className="mt-0" aria-label={t(`tabs.${tab}`)}>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              {fields.map(({ name, value, set, type, Icon, autocomplete }) => (
+                <div key={name} className="space-y-1.5">
+                  <label htmlFor={`${id}-${name}`} className="sr-only">{t(`fields.${name}`)}</label>
                   <div className="relative">
-                    <div className="absolute left-2.5 top-2 text-muted-foreground">
-                      <User2 className="h-5 w-5" />
-                    </div>
+                    <Icon className="absolute left-2.5 top-2 h-5 w-5 text-muted-foreground" aria-hidden="true" />
                     <Input
-                      className={cn(
-                        "h-9 pl-9 pr-3",
-                        errors.username &&
-                          "border-destructive focus-visible:ring-destructive",
-                      )}
-                      placeholder={t("fields.username")}
-                      value={username}
-                      onChange={(e) => {
-                        setUsername(e.target.value);
-                        setErrors({});
-                      }}
-                      disabled={loading}
+                      id={`${id}-${name}`} name={name} type={type} autoComplete={autocomplete}
+                      placeholder={t(`fields.${name}`)} value={value} disabled={loading}
+                      onChange={event => { set(event.target.value); setErrors({}) }}
+                      aria-invalid={Boolean(errors[name])} aria-describedby={errors[name] ? `${id}-${name}-error` : undefined}
+                      className={cn('h-9 pl-9 pr-3', errors[name] && 'border-destructive focus-visible:ring-destructive')}
                     />
                   </div>
-                  {errors.username && (
-                    <p className="text-xs text-destructive">
-                      {errors.username}
-                    </p>
-                  )}
+                  {errors[name] && <p id={`${id}-${name}-error`} className="text-xs text-destructive">{errors[name]}</p>}
                 </div>
-                <div className="space-y-1.5">
-                  <div className="relative">
-                    <div className="absolute left-2.5 top-2 text-muted-foreground">
-                      <KeyRound className="h-5 w-5" />
-                    </div>
-                    <Input
-                      className={cn(
-                        "h-9 pl-9 pr-3",
-                        errors.password &&
-                          "border-destructive focus-visible:ring-destructive",
-                      )}
-                      type="password"
-                      placeholder={t("fields.password")}
-                      value={password}
-                      onChange={(e) => {
-                        setPassword(e.target.value);
-                        setErrors({});
-                      }}
-                      disabled={loading}
-                    />
-                  </div>
-                  {errors.password && (
-                    <p className="text-xs text-destructive">
-                      {errors.password}
-                    </p>
-                  )}
-                </div>
-              </div>
-
-              <div className="space-y-3 pt-1">
-                <Button
-                  className="w-full"
-                  onClick={handleLogin}
-                  disabled={loading}
-                >
-                  {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  {t("actions.login")}
-                </Button>
-              </div>
-            </TabsContent>
-            {/* 停用注册*/}
-            {/*<TabsContent value="register" className="space-y-4 mt-0">
-              <div className="space-y-3">
-                <div className="space-y-1.5">
-                  <div className="relative">
-                    <div className="absolute left-2.5 top-2 text-muted-foreground">
-                      <User2 className="h-5 w-5" />
-                    </div>
-                    <Input
-                      className={cn(
-                        "h-9 pl-9 pr-3",
-                        errors.username &&
-                          "border-destructive focus-visible:ring-destructive",
-                      )}
-                      placeholder={t("fields.username")}
-                      value={username}
-                      onChange={(e) => {
-                        setUsername(e.target.value);
-                        setErrors({});
-                      }}
-                      disabled={loading}
-                    />
-                  </div>
-                  {errors.username && (
-                    <p className="text-xs text-destructive">
-                      {errors.username}
-                    </p>
-                  )}
-                </div>
-                <div className="space-y-1.5">
-                  <div className="relative">
-                    <div className="absolute left-2.5 top-2 text-muted-foreground">
-                      <KeyRound className="h-5 w-5" />
-                    </div>
-                    <Input
-                      className={cn(
-                        "h-9 pl-9 pr-3",
-                        errors.password &&
-                          "border-destructive focus-visible:ring-destructive",
-                      )}
-                      type="password"
-                      placeholder={t("fields.password")}
-                      value={password}
-                      onChange={(e) => {
-                        setPassword(e.target.value);
-                        setErrors({});
-                      }}
-                      disabled={loading}
-                    />
-                  </div>
-                  {errors.password && (
-                    <p className="text-xs text-destructive">
-                      {errors.password}
-                    </p>
-                  )}
-                </div>
-                <div className="space-y-1.5">
-                  <div className="relative">
-                    <div className="absolute left-2.5 top-2 text-muted-foreground">
-                      <KeyRound className="h-5 w-5" />
-                    </div>
-                    <Input
-                      className={cn(
-                        "h-9 pl-9 pr-3",
-                        errors.confirmPassword &&
-                          "border-destructive focus-visible:ring-destructive",
-                      )}
-                      type="password"
-                      placeholder={t("fields.confirmPassword")}
-                      value={confirmPassword}
-                      onChange={(e) => {
-                        setConfirmPassword(e.target.value);
-                        setErrors({});
-                      }}
-                      disabled={loading}
-                    />
-                  </div>
-                  {errors.confirmPassword && (
-                    <p className="text-xs text-destructive">
-                      {errors.confirmPassword}
-                    </p>
-                  )}
-                </div>
-              </div>
-
-              <div className="space-y-3 pt-1">
-                <Button
-                  className="w-full"
-                  onClick={handleRegister}
-                  disabled={loading}
-                >
-                  {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  {t("actions.register")}
-                </Button>
-              </div>
-            </TabsContent>*/}
-          </div>
+              ))}
+              {turnstileEnabled && turnstile && <Turnstile siteKey={turnstile.siteKey} onVerify={setTurnstileToken} onExpire={resetTurnstile} resetSignal={turnstileResetCounter} />}
+              <Button type="submit" className="w-full" disabled={loading}>
+                {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {t(`actions.${tab}`)}
+              </Button>
+            </form>
+          </TabsContent>
         </Tabs>
-        {turnstileEnabled && turnstileSiteKey && (
-          <div className={cn("space-y-2", activeTab === "login" ? "mt-4" : "")}>
-            <Turnstile
-              siteKey={turnstileSiteKey}
-              onVerify={setTurnstileToken}
-              onExpire={resetTurnstile}
-              resetSignal={turnstileResetCounter}
-            />
-          </div>
-        )}
       </CardContent>
     </Card>
-  );
+  )
 }
