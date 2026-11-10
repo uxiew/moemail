@@ -3,41 +3,47 @@ interface Env {
 }
 
 const CLEANUP_CONFIG = {
-  // Whether to delete expired emails
+  /** 是否删除过期邮箱 */
   DELETE_EXPIRED_EMAILS: true,
-  
-  // Batch processing size
+  /** 每批删除的最大邮箱数 */
   BATCH_SIZE: 100,
-} as const 
+  /** 最多循环几批（防止单次 Cron 运行太久） */
+  MAX_BATCHES: 10,
+} as const
 
 const main = {
   async scheduled(_: ScheduledEvent, env: Env) {
+    if (!CLEANUP_CONFIG.DELETE_EXPIRED_EMAILS) {
+      console.log('Expired email deletion is disabled')
+      return
+    }
+
     const now = Date.now()
+    let totalDeleted = 0
 
-    try {
-      if (!CLEANUP_CONFIG.DELETE_EXPIRED_EMAILS) {
-        console.log('Expired email deletion is disabled')
-        return
-      }
-
+    // 循环批量删除，防止过期邮箱积压时单批 100 条清不完
+    for (let batch = 0; batch < CLEANUP_CONFIG.MAX_BATCHES; batch++) {
+      // 用子查询代替 DELETE … LIMIT，兼容性更好
       const result = await env.DB
         .prepare(`
-          DELETE FROM email 
-          WHERE expires_at < ?
-          LIMIT ?
+          DELETE FROM email
+          WHERE id IN (
+            SELECT id FROM email WHERE expires_at < ? LIMIT ?
+          )
         `)
         .bind(now, CLEANUP_CONFIG.BATCH_SIZE)
         .run()
 
-      if (result.success) {
-        console.log(`Deleted ${result?.meta?.changes ?? 0} expired emails and their associated messages`)
-      } else {
-        console.error('Failed to delete expired emails')
+      const deleted = result?.meta?.changes ?? 0
+      totalDeleted += deleted
+
+      if (deleted < CLEANUP_CONFIG.BATCH_SIZE) {
+        // 这批没删满，说明已经清完了
+        break
       }
-    } catch (error) {
-      console.error('Failed to cleanup:', error)
-      throw error
     }
+
+    console.log(`Cleanup: deleted ${totalDeleted} expired emails`)
   }
 }
 
