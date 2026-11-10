@@ -8,11 +8,12 @@ import { eq } from "drizzle-orm"
 import { getRequestContext } from "@cloudflare/next-on-pages"
 import { Permission, hasPermission, ROLES, Role } from "./permissions"
 import CredentialsProvider from "next-auth/providers/credentials"
-import { hashPassword, comparePassword } from "@/lib/utils"
+import { comparePassword } from "@/lib/utils"
 import { authSchema, AuthSchema } from "@/lib/validation"
 import { generateAvatarUrl } from "./avatar"
 import { getUserId } from "./apiKey"
 import { verifyTurnstileToken } from "./turnstile"
+import { withRegistrationControl } from "./registration"
 
 const ROLE_DESCRIPTIONS: Record<Role, string> = {
   [ROLES.EMPEROR]: "皇帝（网站所有者）",
@@ -73,8 +74,13 @@ export async function getUserRole(userId: string) {
   return userRoleRecords[0].role.name
 }
 
-export async function checkPermission(permission: Permission) {
-  const userId = await getUserId()
+/**
+ * 检查用户是否拥有指定权限
+ * @param permission 需要的权限
+ * @param knownUserId 已知的用户 ID（中间件里传入，避免再调用 getUserId/auth）
+ */
+export async function checkPermission(permission: Permission, knownUserId?: string) {
+  const userId = knownUserId ?? await getUserId()
 
   if (!userId) return false
 
@@ -95,10 +101,10 @@ export const {
   signOut
 } = NextAuth(() => ({
   secret: process.env.AUTH_SECRET,
-  adapter: DrizzleAdapter(createDb(), {
+  adapter: withRegistrationControl(DrizzleAdapter(createDb(), {
     usersTable: users,
     accountsTable: accounts,
-  }),
+  }), getRequestContext().env.SITE_CONFIG),
   providers: [
     GitHub({
       clientId: process.env.AUTH_GITHUB_ID,
@@ -234,26 +240,3 @@ export const {
     strategy: "jwt",
   },
 }))
-
-export async function register(username: string, password: string) {
-  const db = createDb()
-
-  const existing = await db.query.users.findFirst({
-    where: eq(users.username, username)
-  })
-
-  if (existing) {
-    throw new Error("用户名已存在")
-  }
-
-  const hashedPassword = await hashPassword(password)
-
-  const [user] = await db.insert(users)
-    .values({
-      username,
-      password: hashedPassword,
-    })
-    .returning()
-
-  return user
-}
