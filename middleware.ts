@@ -27,11 +27,9 @@ const json = (error: string, status: number, extraHeaders?: Record<string, strin
 
 /** 从请求中提取客户端 IP（Cloudflare 会设置 CF-Connecting-IP） */
 function getClientIp(request: Request): string {
-  return (
-    request.headers.get('cf-connecting-ip') ??
-    request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ??
-    'unknown'
-  )
+  // 不把任意客户端提供的 X-Forwarded-For 当作可信限流身份。
+  const ip = request.headers.get('cf-connecting-ip')?.trim()
+  return ip && ip.length <= 64 ? ip : 'unknown'
 }
 
 export async function middleware(request: Request) {
@@ -82,7 +80,7 @@ export async function middleware(request: Request) {
 
     headers.set(USER_ID_HEADER, userId)
 
-    // 按用户限流，防止暴力刷接口耗尽 Cloudflare 免费额度
+    // 按用户减少后续业务查询；本次认证和 Functions 请求仍计入额度
     // 创建邮箱：10 次/分钟；其他 API：60 次/分钟
     const rateKey = pathname.startsWith('/api/emails/generate')
       ? `gen:${userId}`
