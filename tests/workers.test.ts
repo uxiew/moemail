@@ -59,7 +59,8 @@ function incoming(to: string) {
   return { message: message as ForwardableEmailMessage, rejected, reads: () => reads }
 }
 
-test('cleanup deletes at most 1000 expired mailboxes, cascades, and can run again', async () => {
+test('cleanup deletes at most 1000 expired mailboxes, cascades, and can run again', async (t) => {
+  const log = t.mock.method(console, 'log', () => {})
   const now = Date.now()
   await mailbox('active', now + 60_000)
   await mailbox('permanent', new Date('9999-01-01').getTime())
@@ -71,6 +72,7 @@ test('cleanup deletes at most 1000 expired mailboxes, cascades, and can run agai
   await db.prepare("INSERT INTO message_share (id, message_id, token, created_at) VALUES ('message-share', 'message', 'message-token', ?)").bind(now).run()
   await cleanup.scheduled({} as ScheduledEvent, { DB: db })
   assert.equal(await db.prepare('SELECT count(*) AS n FROM email WHERE expires_at < ?').bind(now).first('n'), 1)
+  assert.match(String(log.mock.calls[0].arguments[0]), /deleted 1000 expired mailboxes/)
   await cleanup.scheduled({} as ScheduledEvent, { DB: db })
   await cleanup.scheduled({} as ScheduledEvent, { DB: db })
   assert.equal(await db.prepare('SELECT count(*) AS n FROM email').first('n'), 2)
@@ -119,4 +121,29 @@ test('registration handles concurrent duplicate usernames without exposing passw
   assert.ok(rejected[0].reason instanceof UsernameTakenError)
   assert.equal('password' in successful[0].value, false)
   assert.equal(await db.prepare("SELECT count(*) AS n FROM user WHERE username = 'registration_test'").first('n'), 1)
+})
+
+test('cleanup stops after one empty batch', async () => {
+  let queries = 0
+  const countedDb = { prepare(sql: string) { queries++; return db.prepare(sql) } } as D1Database
+  await cleanup.scheduled({} as ScheduledEvent, { DB: countedDb })
+  assert.equal(queries, 1)
+})
+
+test('cleanup surfaces partial failure and safely resumes on the next invocation', async () => {
+  const now = Date.now()
+  await db.batch(Array.from({ length: 151 }, (_, i) => db.prepare(
+    'INSERT INTO email (id, address, created_at, expires_at) VALUES (?, ?, ?, ?)'
+  ).bind(`partial-${i}`, `partial-${i}@example.com`, now, now - 1000)))
+  let queries = 0
+  const failingDb = {
+    prepare(sql: string) {
+      queries++
+      return db.prepare(queries === 2 ? 'SELECT * FROM missing_cleanup_table WHERE id = ? AND id = ?' : sql)
+    },
+  } as D1Database
+  await assert.rejects(cleanup.scheduled({} as ScheduledEvent, { DB: failingDb }), /missing_cleanup_table/)
+  assert.equal(await db.prepare('SELECT count(*) AS n FROM email').first('n'), 51)
+  await cleanup.scheduled({} as ScheduledEvent, { DB: db })
+  assert.equal(await db.prepare('SELECT count(*) AS n FROM email').first('n'), 0)
 })

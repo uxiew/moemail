@@ -28,13 +28,15 @@ const main = {
         .prepare(`
           DELETE FROM email
           WHERE id IN (
-            SELECT id FROM email WHERE expires_at < ? LIMIT ?
+            SELECT id FROM email WHERE expires_at < ? ORDER BY expires_at, id LIMIT ?
           )
+          RETURNING id
         `)
         .bind(now, CLEANUP_CONFIG.BATCH_SIZE)
-        .run()
+        .all<{ id: string }>()
 
-      const deleted = result?.meta?.changes ?? 0
+      // meta.changes 包含级联删除的邮件和分享记录，不能拿它计数邮箱。
+      const deleted = result.results.length
       totalDeleted += deleted
 
       if (deleted < CLEANUP_CONFIG.BATCH_SIZE) {
@@ -43,7 +45,7 @@ const main = {
       }
     }
 
-    console.log(`Cleanup: deleted ${totalDeleted} expired emails`)
+    console.log(`Cleanup: deleted ${totalDeleted} expired mailboxes`)
   }
 }
 
