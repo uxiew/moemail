@@ -90,7 +90,7 @@ cd moemail
 mise install
 pnpm install --frozen-lockfile
 ```
-不用 mise 时，请使用 Node.js 24.22.2 和 pnpm 12.8.1。隔离的假数据预览见[本地预览说明](docs/local-preview.md)。
+不用 mise 时，请使用 Node.js 24.22.2 和 pnpm 12.8.1。隔离的假数据预览、Pages 适配器兼容范围见[本地预览说明](docs/local-preview.md)，已有站点更新见[上线与回滚说明](docs/deployment.md)。
 
 3. 设置 wrangler：
 ```bash

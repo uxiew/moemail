@@ -1,0 +1,11 @@
+# 仅放行已完成 Pages 构建与运行回归的组合，不改上游声明或其他包的校验。
+peerDependencyRules:
+  allowedVersions:
+    "@cloudflare/next-on-pages@1.13.16>next": "15.5.29"
+
+# pnpm 12 默认拒绝未审核的安装脚本；只批准当前锁文件所需的本机构建工具。
+allowBuilds:
+  "bun@1.1.39": true
+  "esbuild@0.14.47 || 0.15.18 || 0.18.20 || 0.19.12 || 0.25.0 || 0.27.3": true
+  "sharp@0.34.5": true
+  "workerd@1.20241205.0 || 1.20260421.1": true

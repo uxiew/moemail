@@ -44,7 +44,9 @@ pnpm exec wrangler pages dev .vercel/output/static \
 
 访问 `http://localhost:8788/zh-CN`。HTTP 本地预览必须明确 `AUTH_URL`；否则 Auth.js 的内部会话请求可能按 HTTPS 选 Cookie，表现为登录拿到了 Cookie，后续接口仍返回 401。不要把这个 localhost 配置部署到生产。
 
-当前保留 next-on-pages 1.13.16。其 peer 范围上限是 Next 15.5.2；安全更新的 15.5.29 超出声明范围。本项目已验证 Vercel 构建、Pages 转换、本地 Worker API 和浏览器流程，但这不是上游支持承诺；后续升级必须重跑这些检查。
+当前固定 next-on-pages 1.13.16。其上游 peer 范围上限仍是 Next 15.5.2；项目通过 `pnpm-workspace.yaml` 的定向规则额外接受 **15.5.29**，只作用于这个适配器版本，不放宽其他依赖校验，也不允许任意 15.x。该规则只改变 pnpm 的兼容性告警，不修改适配器代码或上游声明。
+
+这套组合已通过 Vercel 构建、Pages 转换、本地 Worker API 和浏览器流程，但不是上游支持承诺。`build:pages` 显式调用锁定的 Vercel 39.1.1，再执行适配器转换，避免适配器退回 `pnpm dlx vercel` 下载未验证版本。后续升级必须重跑这些检查，再更新定向规则；禁止通过降级到有已知漏洞的 Next 版本来消除告警。部署与回滚见[上线说明](deployment.md)。
 
 ## 注册开关
 

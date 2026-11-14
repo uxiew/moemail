@@ -12,7 +12,7 @@ importers:
         specifier: ^1.7.4
         version: 1.7.4
       '@cloudflare/next-on-pages':
-        specifier: ^1.13.16
+        specifier: 1.13.16
         version: 1.13.16(@cloudflare/workers-types@4.20260424.1)(next@15.5.29(@babel/core@7.26.0(supports-color@10.2.2))(react-dom@19.0.9(react@19.0.9))(react@19.0.9))(supports-color@10.2.2)(vercel@39.1.1(supports-color@10.2.2))(wrangler@4.84.1(@cloudflare/workers-types@4.20260424.1))
       '@radix-ui/react-alert-dialog':
         specifier: ^1.1.4
