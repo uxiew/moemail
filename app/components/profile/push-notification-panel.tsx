@@ -18,11 +18,11 @@ export function PushNotificationPanel() {
   const busyRef = useRef(false)
 
   const refresh = useCallback(async () => {
-    if (!window.isSecureContext || !('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) {
-      setState('unavailable'); setMessage('当前浏览器不支持系统推送，请使用支持 Web Push 的浏览器。'); return
-    }
     if (getInstallPlatform(navigator) === 'ios' && !matchMedia('(display-mode: standalone)').matches && !(navigator as Navigator & { standalone?: boolean }).standalone) {
       setState('unavailable'); setMessage('iPhone / iPad 请先添加到主屏幕，再从应用图标打开并开启通知。'); return
+    }
+    if (!window.isSecureContext || !('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) {
+      setState('unavailable'); setMessage('当前浏览器不支持系统推送，请使用支持 Web Push 的浏览器。'); return
     }
     try {
       const response = await fetch('/api/push', { cache: 'no-store', signal: AbortSignal.timeout(8000) })

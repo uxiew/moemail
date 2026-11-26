@@ -69,6 +69,8 @@ pnpm test:pwa:build
 
 在[隔离预览](local-preview.md)中配置临时公钥后，可用相同本地 `AUTH_SECRET` 运行 `PREVIEW_URL=http://localhost:8790 pnpm exec tsx scripts/check-push-preview.ts`。脚本只允许 loopback，测试认证、CSRF、非法地址、重复提交、跨账号操作、设备上限及取消订阅；会清理种子账号订阅，不得用于生产。
 
+在本地已登录的个人中心运行 `tests/browser/assert-push-mobile.js`，检查未安装的 iOS 即使没有暴露 Push API，也会先得到添加到主屏幕的指引，而不是被误判为浏览器不支持。
+
 2026-11-26 验证了 53 项自动测试及本地 29 项订阅 API 检查。实际测试 Chrome 临时授权后完成真实订阅、关闭网页、真实推送服务 201 接收、后台通知生成与取消订阅；推送签名由本地 workerd 生成，网络投递复用已有系统代理（本地 workerd 直连该服务超时）。浏览器授权由测试 CDP 会话提供，不等同于用户在手机系统上点过允许；真实 iPhone/Android、真实 SMTP 投递和长期到达率仍需单独验收。
 
 参考：[Apple Web Push](https://developer.apple.com/documentation/usernotifications/sending-web-push-notifications-in-web-apps-and-browsers)、[VAPID RFC 8292](https://www.rfc-editor.org/rfc/rfc8292)、[Cloudflare email 处理上下文](https://developers.cloudflare.com/email-service/api/route-emails/email-handler/)。
