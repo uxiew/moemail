@@ -34,8 +34,14 @@ const nextConfig = {
 
 const withPWAConfigured = withPWA({
   dest: 'public',
-  register: true,
+  register: false,
   skipWaiting: true,
+  // 邮箱和登录页面必须走网络，不能在退出登录后回放旧账号的 API/HTML 缓存。
+  cacheStartUrl: false,
+  dynamicStartUrl: false,
+  runtimeCaching: [],
+  // App Router 的内部构建清单不会发布到 Pages；预缓存它的 404 会使整个 SW 安装失败。
+  buildExcludes: [/app-build-manifest\.json$/],
   disable: process.env.NODE_ENV === 'development',
 }) as any
 

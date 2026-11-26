@@ -8,6 +8,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { cn } from "@/lib/utils";
 import "../globals.css";
 import { Providers } from "../providers";
+import { InstallPrompt } from "@/components/pwa/install-prompt";
 
 export const runtime = "edge";
 
@@ -146,6 +147,7 @@ export default async function LocaleLayout({
           <Providers>
             <NextIntlClientProvider locale={locale} messages={messages}>
               {children}
+              <InstallPrompt />
             </NextIntlClientProvider>
           </Providers>
           <Toaster />

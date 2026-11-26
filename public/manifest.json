@@ -2,6 +2,9 @@
   "name": "MoeMail",
   "short_name": "MoeMail",
   "description": "萌萌哒临时邮箱服务",
+  "id": "/",
+  "scope": "/",
+  "lang": "zh-CN",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",
@@ -20,4 +23,4 @@
       "purpose": "any maskable"
     }
   ]
-} 
+}

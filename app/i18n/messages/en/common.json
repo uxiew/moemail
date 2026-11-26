@@ -15,5 +15,20 @@
     "logout": "Logout",
     "backToMailbox": "Back to Mailbox"
   },
-  "github": "Get Source Code"
+  "github": "Get Source Code",
+  "install": {
+    "title": "Add MoeMail to your home screen",
+    "description": "Open it from an icon next time, just like an app.",
+    "install": "Install app",
+    "showSteps": "Show instructions",
+    "dismiss": "Dismiss installation reminder for 7 days",
+    "waiting": "Confirm in the browser dialog",
+    "failed": "Installation could not open. Try Install or Add to Home Screen in your browser menu.",
+    "iosDescription": "iPhone and iPad require manual installation, not an automatic system dialog.",
+    "openSafari": "Open this website in Safari.",
+    "share": "Tap Share; on some versions, open the browser menu first.",
+    "addHome": "Choose Add to Home Screen. If missing, enable it under Edit Actions.",
+    "confirm": "Keep Open as Web App enabled if shown, then tap Add.",
+    "gotIt": "Got it"
+  }
 }
