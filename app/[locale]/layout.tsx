@@ -132,7 +132,7 @@ export default async function LocaleLayout({
       </head>
       <body
         className={cn(
-          "min-h-screen antialiased",
+          "min-h-dvh antialiased",
           "bg-background text-foreground",
           "transition-colors duration-300",
         )}

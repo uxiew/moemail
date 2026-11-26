@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useRef, useState } from "react"
 import { useTranslations } from "next-intl"
 import { EmailList } from "./email-list"
 import { MessageListContainer } from "./message-list-container"
@@ -11,6 +11,7 @@ import { useCopy } from "@/hooks/use-copy"
 import { useSendPermission } from "@/hooks/use-send-permission"
 import { Copy } from "lucide-react"
 import { useDesktopLayout } from "@/hooks/use-desktop-layout"
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
 
 interface Email {
   id: string
@@ -26,19 +27,14 @@ export function ThreeColumnLayout() {
   const { copyToClipboard } = useCopy()
   const { canSend: canSendEmails } = useSendPermission()
   const isDesktop = useDesktopLayout()
+  const mobileInboxRef = useRef<HTMLDivElement>(null)
 
   const columnClass = "min-w-0 border-2 border-primary/20 bg-background rounded-lg overflow-hidden flex flex-col"
   const headerClass = "h-14 min-w-0 p-2 border-b-2 border-primary/20 flex items-center justify-between shrink-0"
   const titleClass = "text-sm font-bold px-2 w-full overflow-hidden"
 
-  // 移动端视图逻辑
-  const getMobileView = () => {
-    if (selectedMessageId) return "message"
-    if (selectedEmail) return "emails"
-    return "list"
-  }
-
-  const mobileView = getMobileView()
+  // 详情覆盖在列表上，不卸载列表，关闭后才能保留分页和滚动位置。
+  const mobileView = selectedEmail ? "emails" : "list"
 
   const copyEmailAddress = () => {
     copyToClipboard(selectedEmail?.address || "")
@@ -135,7 +131,7 @@ export function ThreeColumnLayout() {
               <div className={headerClass}>
                 <h2 className={titleClass}>{t("myEmails")}</h2>
               </div>
-              <div className="flex-1 overflow-auto">
+              <div className="flex-1 min-h-0 overflow-hidden">
                 <EmailList
                   onEmailSelect={(email) => {
                     setSelectedEmail(email)
@@ -147,11 +143,12 @@ export function ThreeColumnLayout() {
           )}
 
           {mobileView === "emails" && selectedEmail && (
-            <div className="h-full flex flex-col">
+            <div ref={mobileInboxRef} tabIndex={-1} data-mobile-inbox className="h-full min-h-0 flex flex-col outline-none">
               <div className={cn(headerClass, "gap-2")}>
                 <button
                   onClick={() => {
                     setSelectedEmail(null)
+                    setSelectedMessageId(null)
                   }}
                   className="text-sm text-primary shrink-0"
                 >
@@ -173,7 +170,7 @@ export function ThreeColumnLayout() {
                   )}
                 </div>
               </div>
-              <div className="flex-1 overflow-auto">
+              <div className="flex-1 min-h-0 overflow-hidden">
                 <MessageListContainer
                   email={selectedEmail}
                   onMessageSelect={handleMessageSelect}
@@ -184,29 +181,28 @@ export function ThreeColumnLayout() {
             </div>
           )}
 
-          {mobileView === "message" && selectedEmail && selectedMessageId && (
-            <div className="h-full flex flex-col">
-              <div className={headerClass}>
-                <button
-                  onClick={() => setSelectedMessageId(null)}
-                  className="text-sm text-primary"
-                >
-                  {t("backToMessageList")}
-                </button>
-                <span className="text-sm font-medium">{t("messageContent")}</span>
-              </div>
-              <div className="flex-1 overflow-auto">
+        </div>
+        <Dialog open={!!selectedEmail && !!selectedMessageId} onOpenChange={open => { if (!open) setSelectedMessageId(null) }}>
+          <DialogContent side="bottom" data-mobile-message-sheet aria-describedby={undefined}
+            onCloseAutoFocus={event => { event.preventDefault(); mobileInboxRef.current?.focus({ preventScroll: true }) }}>
+            <div className="shrink-0 border-b border-primary/20 px-4 pb-3 pt-2">
+              <div aria-hidden="true" className="mx-auto mb-2 h-1 w-10 rounded-full bg-muted-foreground/30" />
+              <DialogTitle className="pr-12 text-sm">{t("messageContent")}</DialogTitle>
+            </div>
+            <div className="flex-1 min-h-0 overflow-auto overscroll-contain">
+              {selectedEmail && selectedMessageId && (
                 <MessageView
+                  key={selectedMessageId}
                   emailId={selectedEmail.id}
                   messageId={selectedMessageId}
                   messageType={selectedMessageType}
                   onClose={() => setSelectedMessageId(null)}
                 />
-              </div>
+              )}
             </div>
-          )}
-        </div>
+          </DialogContent>
+        </Dialog>
       </div>}
     </div>
   )
-} 
+}

@@ -56,8 +56,8 @@ try {
     await db.prepare('INSERT INTO message (id, emailId, from_address, to_address, subject, content, html, type, received_at, sent_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
       .bind(`preview-message-${index}`, 'preview-mailbox-0', 'sender@example.com', addresses[0],
         index === 0 ? '本地预览：桌面三栏与手机布局检查' : `回归测试邮件 ${index}`,
-        '这是本地假数据。请检查标题、工具栏和正文的对齐。\n' + 'long-content-'.repeat(50),
-        `<h2>布局回归测试</h2><p>这封邮件仅用于本地预览，不会发送到外部。</p><p>${'long-html-content-'.repeat(40)}</p>`,
+        index === 24 ? '这是一封短邮件，无需滚动。' : '这是本地假数据。请检查标题、工具栏和正文的对齐。\n' + 'long-content-'.repeat(50),
+        index === 24 ? '<p>这是一封短邮件，无需滚动。</p>' : `<h2>布局回归测试</h2><p>这封邮件仅用于本地预览，不会发送到外部。</p><p>${'long-html-content-'.repeat(40)}</p>`,
         'received', now - index * 60_000, now - index * 60_000).run()
   }
   await db.prepare('INSERT INTO message (id, emailId, from_address, to_address, subject, content, html, type, received_at, sent_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')

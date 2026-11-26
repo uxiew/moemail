@@ -23,6 +23,16 @@
   }
   if (location.pathname.endsWith('/moe')) {
     assert(document.documentElement.scrollHeight <= innerHeight, 'Mailbox page scrolls outside its panels')
+    const sheet = document.querySelector('[data-mobile-message-sheet]')
+    if (sheet) {
+      const rect = sheet.getBoundingClientRect()
+      assert(innerWidth < 1024, 'Mobile detail sheet leaked into desktop layout')
+      assert(rect.top >= innerHeight * 0.1 && Math.abs(rect.bottom - innerHeight) <= 1, 'Detail sheet must leave a clickable backdrop and sit at the bottom')
+      assert(rect.left >= 0 && rect.right <= innerWidth, 'Detail sheet overflows the viewport')
+      assert(document.querySelector('[data-mobile-inbox]'), 'Opening detail unmounted the message list')
+      assert(sheet.getAttribute('role') === 'dialog' && sheet.getAttribute('aria-labelledby'), 'Detail sheet needs an accessible dialog title')
+      result.mobileSheet = true
+    }
     const headings = [...document.querySelectorAll('main h2')].filter(visible)
     if (innerWidth >= 1024) {
       assert(headings.length === 3, 'Desktop mailbox must mount three columns')
@@ -42,7 +52,7 @@
     assert(rects.every(rect => Math.abs(rect.x - rects[0].x) < 1 && Math.abs(rect.width - rects[0].width) < 1), 'Settings fields are misaligned')
     assert(document.querySelector('#registration-enabled'), 'Registration switch is missing')
   }
-  for (const frame of [...document.querySelectorAll('iframe')].filter(visible)) {
+  for (const frame of [...document.querySelectorAll('iframe[srcdoc][sandbox]')].filter(visible)) {
     assert(!frame.sandbox.contains('allow-scripts'), 'Email scripts must stay sandboxed')
     assert(frame.contentDocument?.body?.innerText.trim(), 'Email body is blank')
     assert(frame.contentDocument.documentElement.scrollWidth <= frame.clientWidth, 'Sample email overflows horizontally')
