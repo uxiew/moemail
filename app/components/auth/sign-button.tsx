@@ -2,7 +2,8 @@
 
 import { Button } from "@/components/ui/button"
 import Image from "next/image"
-import { signOut, useSession } from "next-auth/react"
+import { useSession } from "next-auth/react"
+import { signOutWithPushCleanup } from "@/lib/push-client"
 import { LogIn } from "lucide-react"
 import { useRouter } from 'next/navigation'
 import { useTranslations, useLocale } from "next-intl"
@@ -50,9 +51,9 @@ export function SignButton({ size = "default" }: SignButtonProps) {
         )}
         <span className="hidden sm:inline-block text-sm">{session.user.name}</span>
       </Link>
-      <Button onClick={() => signOut({ callbackUrl: `/${locale}` })} variant="outline" className={cn("flex-shrink-0", size === "lg" ? "px-8" : "")} size={size}>
+      <Button onClick={() => void signOutWithPushCleanup(`/${locale}`)} variant="outline" className={cn("flex-shrink-0", size === "lg" ? "px-8" : "")} size={size}>
         {t("logout")}
       </Button>
     </div>
   )
-} 
+}

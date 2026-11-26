@@ -10,6 +10,7 @@
     "test:quota": "node --import tsx --test tests/message-poller.test.ts tests/workers.test.ts tests/locales.test.ts tests/registration.test.ts tests/rate-limit.test.ts",
     "test:build": "node --import tsx --test tests/build-pages.test.ts",
     "test:pwa": "node --import tsx --test tests/pwa.test.ts",
+    "test:push": "node --import tsx --test tests/web-push.test.ts tests/push-worker.test.ts",
     "test:pwa:build": "node --import tsx --test tests/pwa-build.test.ts",
     "build:pages": "tsx scripts/build-pages.ts",
     "db:migrate-local": "tsx scripts/migrate.ts local",

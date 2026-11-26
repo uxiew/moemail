@@ -75,6 +75,15 @@ export const messages = sqliteTable("message", {
   emailIdReceivedAtTypeIdx: index("message_email_id_received_at_type_idx").on(table.emailId, table.receivedAt, table.type),
 }))
 
+export const pushSubscriptions = sqliteTable('push_subscription', {
+  id: text('id').primaryKey(),
+  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  endpoint: text('endpoint').notNull().unique(),
+  vapidPublicKey: text('vapid_public_key').notNull(),
+  createdAt: integer('created_at').notNull(),
+  updatedAt: integer('updated_at').notNull(),
+}, table => ({ userIdIdx: index('push_subscription_user_id_idx').on(table.userId) }))
+
 export const webhooks = sqliteTable('webhook', {
   id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
   userId: text('user_id')

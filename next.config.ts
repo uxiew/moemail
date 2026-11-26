@@ -40,6 +40,7 @@ const withPWAConfigured = withPWA({
   cacheStartUrl: false,
   dynamicStartUrl: false,
   runtimeCaching: [],
+  importScripts: ['/push-worker.js'],
   // App Router 的内部构建清单不会发布到 Pages；预缓存它的 404 会使整个 SW 安装失败。
   buildExcludes: [/app-build-manifest\.json$/],
   disable: process.env.NODE_ENV === 'development',

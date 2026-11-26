@@ -5,8 +5,9 @@ import { and, eq, gt, sql } from 'drizzle-orm'
 import PostalMime from 'postal-mime'
 import { WEBHOOK_CONFIG } from '../app/config/webhook'
 import { EmailMessage } from '../app/lib/webhook'
+import { notifyNewMail } from '../app/lib/web-push'
 
-const handleEmail = async (message: ForwardableEmailMessage, env: Env) => {
+const handleEmail = async (message: ForwardableEmailMessage, env: Env, ctx?: ExecutionContext) => {
   const db = drizzle(env.DB, { schema: { messages, emails, webhooks } })
 
   try {
@@ -33,6 +34,12 @@ const handleEmail = async (message: ForwardableEmailMessage, env: Env) => {
       html: parsedMessage.html || '',
       type: 'received',
     }).returning().get()
+
+    if (targetEmail.userId) {
+      const notification = notifyNewMail(env.DB, env, targetEmail.userId)
+      if (ctx) ctx.waitUntil(notification)
+      else await notification
+    }
 
     const webhook = targetEmail.userId
       ? await db.query.webhooks.findFirst({
@@ -71,9 +78,9 @@ const handleEmail = async (message: ForwardableEmailMessage, env: Env) => {
 }
 
 const worker = {
-  async email(message: ForwardableEmailMessage, env: Env): Promise<void> {
-    await handleEmail(message, env)
+  async email(message: ForwardableEmailMessage, env: Env, ctx?: ExecutionContext): Promise<void> {
+    await handleEmail(message, env, ctx)
   }
 }
 
-export default worker 
+export default worker

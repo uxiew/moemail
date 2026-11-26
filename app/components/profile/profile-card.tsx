@@ -4,7 +4,7 @@ import { User } from "next-auth"
 import { useTranslations, useLocale } from "next-intl"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
-import { signOut } from "next-auth/react"
+import { signOutWithPushCleanup } from "@/lib/push-client"
 import { Github, Settings, Crown, Sword, User2, Gem, Mail } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { WebhookConfig } from "./webhook-config"
@@ -14,6 +14,7 @@ import { useRolePermission } from "@/hooks/use-role-permission"
 import { PERMISSIONS } from "@/lib/permissions"
 import { WebsiteConfigPanel } from "./website-config-panel"
 import { ApiKeyPanel } from "./api-key-panel"
+import { PushNotificationPanel } from "./push-notification-panel"
 
 interface ProfileCardProps {
   user: User
@@ -135,6 +136,8 @@ export function ProfileCard({ user }: ProfileCardProps) {
         </div>
       </div>
 
+      <PushNotificationPanel />
+
       {canManageWebhook && (
         <div className="bg-background rounded-lg border-2 border-primary/20 p-6">
           <div className="flex items-center gap-2 mb-6">
@@ -160,7 +163,7 @@ export function ProfileCard({ user }: ProfileCardProps) {
         </Button>
         <Button
           variant="outline"
-          onClick={() => signOut({ callbackUrl: `/${locale}` })}
+          onClick={() => void signOutWithPushCleanup(`/${locale}`)}
           className="flex-1"
         >
           {tAuth("logout")}
@@ -168,4 +171,4 @@ export function ProfileCard({ user }: ProfileCardProps) {
       </div>
     </div>
   )
-} 
+}
