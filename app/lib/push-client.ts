@@ -2,6 +2,29 @@
 
 import { signOut } from 'next-auth/react'
 
+export function waitForPushWorker(registration: ServiceWorkerRegistration) {
+  // ready 可能返回升级前仍在运行的旧 SW；收到能力确认后才允许订阅。
+  return new Promise<void>((resolve, reject) => {
+    let channel: MessageChannel | undefined
+    const finish = (error?: Error) => {
+      clearTimeout(timer)
+      navigator.serviceWorker.removeEventListener('controllerchange', check)
+      channel?.port1.close(); channel?.port2.close()
+      if (error) reject(error)
+      else resolve()
+    }
+    const check = () => {
+      channel?.port1.close(); channel?.port2.close()
+      channel = new MessageChannel()
+      channel.port1.onmessage = event => { if (event.data === true) finish() }
+      registration.active?.postMessage('moemail-push-ready', [channel.port2])
+    }
+    const timer = setTimeout(() => finish(new Error('通知后台正在更新，请稍后重新检查。')), 8000)
+    navigator.serviceWorker.addEventListener('controllerchange', check)
+    check()
+  })
+}
+
 export async function disconnectPushNotifications(all = false) {
   const registration = 'serviceWorker' in navigator ? await navigator.serviceWorker.getRegistration('/') : undefined
   const subscription = await registration?.pushManager?.getSubscription()

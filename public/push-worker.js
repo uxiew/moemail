@@ -1,3 +1,7 @@
+self.addEventListener('message', event => {
+  if (event.data === 'moemail-push-ready') event.ports[0]?.postMessage(true)
+})
+
 self.addEventListener('push', event => {
   // 通知文案固定在客户端；即使服务端发来载荷，也不展示邮件或用户信息。
   event.waitUntil(self.registration.showNotification('MoeMail', {

@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { Bell } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { getInstallPlatform } from '@/lib/pwa-install'
-import { disconnectPushNotifications } from '@/lib/push-client'
+import { disconnectPushNotifications, waitForPushWorker } from '@/lib/push-client'
 
 type PushConfig = { publicKey: string | null; subscriptions: string[]; maxDevices: number }
 
@@ -36,6 +36,7 @@ export function PushNotificationPanel() {
           new Promise<never>((_, reject) => { timer = setTimeout(() => reject(new Error('浏览器后台尚未就绪，请稍后重新检查。')), 8000) }),
         ])
       } finally { clearTimeout(timer) }
+      await waitForPushWorker(registration.current)
       subscription.current = await registration.current?.pushManager.getSubscription() ?? null
       if (subscription.current) {
         const hash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(subscription.current.endpoint))

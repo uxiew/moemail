@@ -7,6 +7,7 @@
 - iPhone / iPad 需要 iOS 16.4 或更高版本，先添加到主屏幕，再从应用图标打开并授权。安装应用不等于允许通知。
 - 每个账号最多 5 个设备。可以关闭本设备或所有设备的通知；从界面退出登录时会取消当前浏览器订阅，并关闭已显示的新邮件通知，不影响其他设备。
 - 权限被拒绝后，应用不会反复弹系统授权框；需要到浏览器/系统设置中允许，再点击「重新检查」。旧订阅或密钥轮换后，先清理旧订阅再重新开启。
+- 已安装的旧版应用需要先完成后台更新；页面会确认后台具备通知能力后才允许开启，避免把仍在运行的旧缓存后台当作已就绪。
 - 原生安装提示优先，手机备用安装入口延迟 30 秒。具体浏览器边界见 [PWA 说明](pwa.md)。
 
 ## 数据与投递边界
@@ -68,6 +69,6 @@ pnpm test:pwa:build
 
 在[隔离预览](local-preview.md)中配置临时公钥后，可用相同本地 `AUTH_SECRET` 运行 `PREVIEW_URL=http://localhost:8790 pnpm exec tsx scripts/check-push-preview.ts`。脚本只允许 loopback，测试认证、CSRF、非法地址、重复提交、跨账号操作、设备上限及取消订阅；会清理种子账号订阅，不得用于生产。
 
-2026-11-26 验证了 50 项自动测试及本地 29 项订阅 API 检查。实际测试 Chrome 临时授权后完成真实订阅、关闭网页、真实推送服务 201 接收、后台通知生成与取消订阅；推送签名由本地 workerd 生成，网络投递复用已有系统代理（本地 workerd 直连该服务超时）。浏览器授权由测试 CDP 会话提供，不等同于用户在手机系统上点过允许；真实 iPhone/Android、真实 SMTP 投递和长期到达率仍需单独验收。
+2026-11-26 验证了 53 项自动测试及本地 29 项订阅 API 检查。实际测试 Chrome 临时授权后完成真实订阅、关闭网页、真实推送服务 201 接收、后台通知生成与取消订阅；推送签名由本地 workerd 生成，网络投递复用已有系统代理（本地 workerd 直连该服务超时）。浏览器授权由测试 CDP 会话提供，不等同于用户在手机系统上点过允许；真实 iPhone/Android、真实 SMTP 投递和长期到达率仍需单独验收。
 
 参考：[Apple Web Push](https://developer.apple.com/documentation/usernotifications/sending-web-push-notifications-in-web-apps-and-browsers)、[VAPID RFC 8292](https://www.rfc-editor.org/rfc/rfc8292)、[Cloudflare email 处理上下文](https://developers.cloudflare.com/email-service/api/route-emails/email-handler/)。
