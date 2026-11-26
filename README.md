@@ -94,6 +94,7 @@ pnpm install --frozen-lockfile
 
 手机浏览器的安装提示、iPhone 添加到主屏幕步骤及验证边界见 [PWA 说明](docs/pwa.md)。
 关闭网页后的新邮件系统通知、设备订阅和管理员配置见[后台通知说明](docs/web-push.md)。
+密码登录/注册的验证码、限流、配置恢复和测试边界见[认证防护说明](docs/auth-protection.md)。
 
 3. 设置 wrangler：
 ```bash

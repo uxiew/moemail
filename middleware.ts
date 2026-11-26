@@ -5,6 +5,7 @@ import { PERMISSIONS, hasPermission, type Permission, type Role } from "@/lib/pe
 import { checkPermission } from "@/lib/auth"
 import { getUserIdByApiKey, USER_ID_HEADER } from "@/lib/apiKey"
 import { checkRateLimit } from "@/lib/rate-limit"
+import { checkAuthRequest } from '@/lib/auth-request'
 
 const API_PERMISSIONS: Record<string, Permission> = {
   '/api/emails': PERMISSIONS.MANAGE_EMAIL,
@@ -44,6 +45,8 @@ export async function middleware(request: Request) {
   const next = () => NextResponse.next({ request: { headers } })
 
   if (pathname.startsWith('/api')) {
+    const authLimited = checkAuthRequest(request)
+    if (authLimited) return authLimited
     if (PUBLIC_API_PREFIXES.some(prefix => pathname.startsWith(prefix))) {
       // 公开接口（分享页轮询等）按 IP 限流：30 次/分钟
       if (pathname.startsWith('/api/shared')) {

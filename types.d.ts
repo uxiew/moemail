@@ -8,6 +8,7 @@ declare global {
     WEB_PUSH_PUBLIC_KEY?: string;
     WEB_PUSH_PRIVATE_KEY?: string;
     WEB_PUSH_SUBJECT?: string;
+    TURNSTILE_TEST_MODE?: string;
   }
 
   interface Window {

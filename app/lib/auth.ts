@@ -1,4 +1,4 @@
-import NextAuth from "next-auth"
+import NextAuth, { CredentialsSignin } from "next-auth"
 import GitHub from "next-auth/providers/github"
 import Google from "next-auth/providers/google"
 import { DrizzleAdapter } from "@auth/drizzle-adapter"
@@ -14,6 +14,13 @@ import { generateAvatarUrl } from "./avatar"
 import { getUserId } from "./apiKey"
 import { verifyTurnstileToken } from "./turnstile"
 import { withRegistrationControl } from "./registration"
+
+class SecurityChallengeError extends CredentialsSignin {
+  constructor(unavailable: boolean) {
+    super()
+    this.code = unavailable ? 'security_unavailable' : 'security_verification_failed'
+  }
+}
 
 const ROLE_DESCRIPTIONS: Record<Role, string> = {
   [ROLES.EMPEROR]: "皇帝（网站所有者）",
@@ -122,7 +129,7 @@ export const {
         username: { label: "用户名", type: "text", placeholder: "请输入用户名" },
         password: { label: "密码", type: "password", placeholder: "请输入密码" },
       },
-      async authorize(credentials) {
+      async authorize(credentials, request) {
         if (!credentials) {
           throw new Error("请输入用户名和密码")
         }
@@ -137,12 +144,9 @@ export const {
           throw new Error("输入格式不正确")
         }
 
-        const verification = await verifyTurnstileToken(parsedCredentials.turnstileToken)
+        const verification = await verifyTurnstileToken(parsedCredentials.turnstileToken, request, 'login')
         if (!verification.success) {
-          if (verification.reason === "missing-token") {
-            throw new Error("请先完成安全验证")
-          }
-          throw new Error("安全验证未通过")
+          throw new SecurityChallengeError(verification.reason === 'misconfigured')
         }
 
         const db = createDb()

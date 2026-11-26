@@ -1,65 +1,16 @@
 import { getRequestContext } from "@cloudflare/next-on-pages"
-
-interface TurnstileConfig {
-  enabled: boolean
-  siteKey: string
-  secretKey: string
-}
+import { createTurnstileVerifier, readTurnstileConfig, type TurnstileConfig, type TurnstileContext, type TurnstileVerificationResult } from './turnstile-validation'
 
 export async function getTurnstileConfig(): Promise<TurnstileConfig> {
-  const env = getRequestContext().env
-  const [enabled, siteKey, secretKey] = await Promise.all([
-    env.SITE_CONFIG.get("TURNSTILE_ENABLED"),
-    env.SITE_CONFIG.get("TURNSTILE_SITE_KEY"),
-    env.SITE_CONFIG.get("TURNSTILE_SECRET_KEY"),
-  ])
-
-  return {
-    enabled: enabled === "true",
-    siteKey: siteKey || "",
-    secretKey: secretKey || "",
-  }
+  return readTurnstileConfig(getRequestContext().env.SITE_CONFIG)
 }
 
-export interface TurnstileVerificationResult {
-  success: boolean
-  reason?: "missing-token" | "verification-failed"
-}
+const verify = createTurnstileVerifier()
 
-export async function verifyTurnstileToken(token?: string | null): Promise<TurnstileVerificationResult> {
+export async function verifyTurnstileToken(token: string | null | undefined, request: Request, action: TurnstileContext['action']): Promise<TurnstileVerificationResult> {
   const config = await getTurnstileConfig()
-
-  if (!config.enabled || !config.siteKey || !config.secretKey) {
-    return { success: true }
-  }
-
-  const trimmedToken = token?.trim()
-  if (!trimmedToken) {
-    return { success: false, reason: "missing-token" }
-  }
-
-  try {
-    const response = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
-      },
-      body: `secret=${encodeURIComponent(config.secretKey)}&response=${encodeURIComponent(trimmedToken)}`,
-    })
-
-    if (!response.ok) {
-      return { success: false, reason: "verification-failed" }
-    }
-
-    const data = await response.json() as { success: boolean }
-
-    if (!data.success) {
-      return { success: false, reason: "verification-failed" }
-    }
-
-    return { success: true }
-  } catch (error) {
-    console.error("Turnstile verification error:", error)
-    return { success: false, reason: "verification-failed" }
-  }
+  return verify(config, token, {
+    hostname: new URL(request.url).hostname, action,
+    allowTestKeys: getRequestContext().env.TURNSTILE_TEST_MODE === 'true',
+  })
 }

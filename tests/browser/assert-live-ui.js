@@ -5,11 +5,13 @@
   assert(document.documentElement.scrollWidth <= innerWidth, 'Page has horizontal overflow')
   if (location.pathname.endsWith('/login')) {
     assert(document.querySelectorAll('input[placeholder="用户名"]').length === 1, 'Login form is missing or duplicated')
-    const inputs = [...document.querySelectorAll('input')]
+    assert(document.querySelector('form')?.method === 'post', 'Auth form must not place passwords in the URL when JavaScript is unavailable')
+    const inputs = [...document.querySelectorAll('input')].filter(visible)
     const rects = inputs.map(input => input.getBoundingClientRect())
     assert(rects.length >= 2, 'Login fields did not mount')
     assert(rects.every(rect => Math.abs(rect.x - rects[0].x) < 1 && Math.abs(rect.width - rects[0].width) < 1), 'Login fields are misaligned')
-    assert(document.documentElement.scrollHeight <= innerHeight, 'Login page has an unexpected second screen')
+    const cardHeight = document.querySelector('[data-auth-card]')?.getBoundingClientRect().height ?? 0
+    assert(document.documentElement.scrollHeight <= Math.max(innerHeight, cardHeight + 64) + 1, 'Login page has extra content beyond the form and its padding')
   } else {
     assert(!document.querySelector('input[placeholder="用户名"]'), 'Global login form leaked into another page')
   }

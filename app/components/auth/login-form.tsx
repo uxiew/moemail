@@ -14,7 +14,7 @@ import { Turnstile } from "@/components/auth/turnstile"
 
 interface LoginFormProps {
   registrationEnabled?: boolean
-  turnstile?: { enabled: boolean; siteKey: string }
+  turnstile?: { enabled: boolean; siteKey: string; configured?: boolean }
 }
 
 type Field = 'username' | 'password' | 'confirmPassword'
@@ -33,7 +33,8 @@ export function LoginForm({ turnstile, registrationEnabled = false }: LoginFormP
   const t = useTranslations("auth.loginForm")
   const registering = registrationEnabled && activeTab === 'register'
   const tab = registering ? 'register' : 'login'
-  const turnstileEnabled = Boolean(turnstile?.enabled && turnstile.siteKey)
+  const turnstileEnabled = turnstile?.enabled === true
+  const turnstileMisconfigured = turnstileEnabled && (!turnstile?.siteKey || turnstile.configured === false)
 
   const resetTurnstile = useCallback(() => {
     setTurnstileToken("")
@@ -77,7 +78,10 @@ export function LoginForm({ turnstile, registrationEnabled = false }: LoginFormP
         toast({ title: t('toast.registerSuccess'), description: t('toast.registerSuccessDesc') })
       } else {
         const result = await signIn('credentials', { username, password, turnstileToken, redirect: false })
-        if (result?.error) throw new Error(t('toast.loginFailedDesc'))
+        if (result?.error) throw new Error(result.code === 'rate_limited' ? '尝试过于频繁，请稍后再试。'
+          : result.code === 'request_too_large' ? '登录请求过大，请检查输入内容。'
+          : result.code === 'security_unavailable' ? '安全验证暂时不可用，请联系管理员。'
+          : result.code === 'security_verification_failed' ? '安全验证未通过，请重新验证。' : t('toast.loginFailedDesc'))
         window.location.href = '/'
       }
     } catch (error) {
@@ -99,7 +103,7 @@ export function LoginForm({ turnstile, registrationEnabled = false }: LoginFormP
   ]
 
   return (
-    <Card className="w-full max-w-lg border-2 border-primary/20">
+    <Card data-auth-card className="w-full max-w-lg border-2 border-primary/20">
       <CardHeader className="space-y-2">
         <CardTitle className="text-2xl text-center bg-gradient-to-r from-primary to-purple-600 bg-clip-text text-transparent">{t('title')}</CardTitle>
         <CardDescription className="text-center">{t('subtitle')}</CardDescription>
@@ -113,7 +117,8 @@ export function LoginForm({ turnstile, registrationEnabled = false }: LoginFormP
             </TabsList>
           )}
           <TabsContent value={tab} className="mt-0" aria-label={t(`tabs.${tab}`)}>
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form method="post" onSubmit={handleSubmit} className="space-y-4">
+              <noscript><p>请启用 JavaScript 后登录，避免跳过安全验证。</p></noscript>
               {fields.map(({ name, value, set, type, Icon, autocomplete }) => (
                 <div key={name} className="space-y-1.5">
                   <label htmlFor={`${id}-${name}`} className="sr-only">{t(`fields.${name}`)}</label>
@@ -130,8 +135,9 @@ export function LoginForm({ turnstile, registrationEnabled = false }: LoginFormP
                   {errors[name] && <p id={`${id}-${name}-error`} className="text-xs text-destructive">{errors[name]}</p>}
                 </div>
               ))}
-              {turnstileEnabled && turnstile && <Turnstile siteKey={turnstile.siteKey} onVerify={setTurnstileToken} onExpire={resetTurnstile} resetSignal={turnstileResetCounter} />}
-              <Button type="submit" className="w-full" disabled={loading}>
+              {turnstileMisconfigured && <p role="alert" className="text-sm text-destructive">安全验证配置不完整，请联系管理员。</p>}
+              {turnstileEnabled && !turnstileMisconfigured && turnstile && <Turnstile siteKey={turnstile.siteKey} action={tab === 'register' ? 'register' : 'login'} onVerify={setTurnstileToken} onExpire={resetTurnstile} resetSignal={turnstileResetCounter} />}
+              <Button type="submit" className="w-full" disabled={loading || turnstileMisconfigured}>
                 {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 {t(`actions.${tab}`)}
               </Button>

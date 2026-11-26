@@ -8,7 +8,7 @@ export const authSchema = z.object({
     .refine(val => !val.includes('@'), "用户名不能是邮箱格式"),
   password: z.string()
     .min(8, "密码长度必须大于等于8位"),
-  turnstileToken: z.string().optional()
+  turnstileToken: z.string().max(2048, '安全验证令牌无效').optional()
 })
 
 export type AuthSchema = z.infer<typeof authSchema>

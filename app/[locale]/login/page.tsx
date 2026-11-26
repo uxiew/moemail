@@ -28,7 +28,7 @@ export default async function LoginPage({
 
   return (
     <div className="min-h-dvh flex items-center justify-center px-4 py-8 bg-gradient-to-b from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
-      <LoginForm registrationEnabled={registrationEnabled} turnstile={{ enabled: turnstile.enabled, siteKey: turnstile.siteKey }} />
+      <LoginForm registrationEnabled={registrationEnabled} turnstile={{ enabled: turnstile.enabled, siteKey: turnstile.siteKey, configured: Boolean(turnstile.siteKey && turnstile.secretKey) }} />
     </div>
   )
 }
