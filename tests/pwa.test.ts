@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
 import { test } from 'node:test'
-import { getInstallPlatform, INSTALL_DISMISS_MS, isInstallDismissed } from '../app/lib/pwa-install'
+import { getInstallMode, getInstallPlatform, INSTALL_DISMISS_MS, isInstallDismissed } from '../app/lib/pwa-install'
 
 test('install guidance distinguishes phones, desktop-mode iPad and desktop browsers', () => {
   const device = (userAgent: string, platform = '', maxTouchPoints = 0) => ({ userAgent, platform, maxTouchPoints })
@@ -21,6 +21,15 @@ test('dismissal lasts seven days and invalid storage cannot hide prompts forever
   for (const value of [null, '', 'garbage', 'Infinity', '-1', '0', String(now + 1)]) {
     assert.equal(isInstallDismissed(value, now), false, String(value))
   }
+})
+
+test('Android has manual guidance without an install event and embedded browsers get an exit path', () => {
+  const android = { userAgent: 'Mozilla/5.0 (Linux; Android 14) Chrome/130 Mobile', platform: 'Linux', maxTouchPoints: 5 }
+  assert.equal(getInstallMode(android, false), 'android')
+  assert.equal(getInstallMode(android, true), 'native')
+  assert.equal(getInstallMode({ ...android, userAgent: android.userAgent + ' MicroMessenger/8' }, false), 'embedded')
+  assert.equal(getInstallMode({ userAgent: 'iPhone Safari', platform: 'iPhone', maxTouchPoints: 5 }, false), 'ios')
+  assert.equal(getInstallMode({ userAgent: 'Chrome Windows', platform: 'Win32', maxTouchPoints: 0 }, true), null)
 })
 
 test('manifest keeps existing application identity and real installable icon dimensions', async () => {

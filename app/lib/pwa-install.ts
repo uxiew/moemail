@@ -8,6 +8,16 @@ export function getInstallPlatform(device: { userAgent: string; platform: string
   return null
 }
 
+export type InstallMode = 'ios' | 'android' | 'embedded' | 'native'
+
+export function getInstallMode(device: { userAgent: string; platform: string; maxTouchPoints: number }, nativeAvailable: boolean): InstallMode | null {
+  const platform = getInstallPlatform(device)
+  if (!platform) return null
+  if (platform === 'android' && nativeAvailable) return 'native'
+  if (/MicroMessenger|\bQQ\/|Weibo|DingTalk|; wv\)/i.test(device.userAgent)) return 'embedded'
+  return platform
+}
+
 export function isInstallDismissed(value: string | null, now = Date.now()) {
   if (!value) return false
   const dismissedAt = Number(value)

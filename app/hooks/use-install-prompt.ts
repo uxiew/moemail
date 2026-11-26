@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState } from 'react'
-import { getInstallPlatform, INSTALL_DISMISSED_KEY, isInstallDismissed } from '@/lib/pwa-install'
+import { getInstallMode, getInstallPlatform, INSTALL_DISMISSED_KEY, isInstallDismissed, type InstallMode } from '@/lib/pwa-install'
 
 interface InstallPromptEvent extends Event {
   prompt(): Promise<void>
@@ -11,9 +11,8 @@ interface InstallPromptEvent extends Event {
 export function useInstallPrompt() {
   const promptRef = useRef<InstallPromptEvent | null>(null)
   const busyRef = useRef(false)
-  const [mode, setMode] = useState<'ios' | 'native' | null>(null)
+  const [mode, setMode] = useState<InstallMode | null>(null)
   const [ready, setReady] = useState(false)
-  const [nativeFallbackReady, setNativeFallbackReady] = useState(false)
   const [dismissed, setDismissed] = useState(false)
   const [busy, setBusy] = useState(false)
   const [failed, setFailed] = useState(false)
@@ -27,31 +26,26 @@ export function useInstallPrompt() {
     if (!window.isSecureContext) return
     const platform = getInstallPlatform(navigator)
     const standalone = matchMedia('(display-mode: standalone)')
-    const viewport = matchMedia('(max-width: 1023px) and (min-height: 568px)')
+    const viewport = matchMedia('(max-width: 1023px)')
     let installed = false
     let active = true
-    let nativeTimer: ReturnType<typeof setTimeout> | undefined
     try { setDismissed(isInstallDismissed(localStorage.getItem(INSTALL_DISMISSED_KEY))) } catch { /* 存储不可用不影响页面。 */ }
 
     const refresh = () => {
       if (!active) return
-      const editing = document.activeElement?.matches('input, textarea, [contenteditable="true"]')
+      const editing = document.activeElement?.closest('form') || document.activeElement?.matches('input, textarea, iframe, [contenteditable="true"]')
       const standaloneApp = standalone.matches || (navigator as Navigator & { standalone?: boolean }).standalone
       setMode(!platform || installed || standaloneApp || !viewport.matches || editing
-        ? null : platform === 'ios' ? 'ios' : promptRef.current ? 'native' : null)
+        ? null : getInstallMode(navigator, Boolean(promptRef.current)))
     }
     const onPrompt = (event: Event) => {
       if (platform !== 'android' || installed || standalone.matches) return
-      // 不再 preventDefault：优先保留浏览器原生提示，仅延迟提供站内备用入口。
+      // 原生提示仍由浏览器处理；没有此事件也要提供主动的手机安装指引。
       promptRef.current = event as InstallPromptEvent
       setFailed(false)
-      setNativeFallbackReady(false)
-      clearTimeout(nativeTimer)
-      nativeTimer = setTimeout(() => setNativeFallbackReady(true), 30_000)
       void (event as InstallPromptEvent).userChoice.then(() => {
         if (!active) return
         promptRef.current = null
-        clearTimeout(nativeTimer)
         dismiss()
         refresh()
       }).catch(() => { /* 点击备用入口时单独显示失败提示。 */ })
@@ -74,12 +68,11 @@ export function useInstallPrompt() {
     document.addEventListener('focusout', onFocus)
     standalone.addEventListener('change', refresh)
     viewport.addEventListener('change', refresh)
-    const timer = window.setTimeout(() => setReady(true), 3000)
+    const timer = window.setTimeout(() => setReady(true), 5000)
     refresh()
     return () => {
       active = false
       clearTimeout(timer)
-      clearTimeout(nativeTimer)
       promptRef.current = null
       window.removeEventListener('beforeinstallprompt', onPrompt)
       window.removeEventListener('appinstalled', onInstalled)
@@ -110,5 +103,5 @@ export function useInstallPrompt() {
     }
   }
 
-  return { mode, visible: ready && !dismissed && mode !== null && (mode !== 'native' || nativeFallbackReady), busy, failed, dismiss, install }
+  return { mode, visible: ready && !dismissed && mode !== null, busy, failed, dismiss, install }
 }
